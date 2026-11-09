@@ -1,0 +1,9 @@
+# Preserve supplied exam attachments byte for byte, including JSON line endings.
+course-source/docs/postgresql/assets/files/** -text
+*.xlsx binary
+*.docx binary
+*.pdf binary
+*.png binary
+
+# Preserve whitespace in the imported course materials.
+course-source/** whitespace=-blank-at-eol,-blank-at-eof

@@ -1,0 +1,21 @@
+{
+  "name": "2026-dkip-demo",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "test": "node --test tests/profile-2026.test.mjs",
+    "preview": "node scripts/serve.mjs",
+    "dev": "npm run build && node scripts/serve.mjs --watch"
+  },
+  "devDependencies": {
+    "elkjs": "0.11.0"
+  },
+  "dependencies": {
+    "highlight.js": "11.12.0",
+    "markdown-it": "15.0.3",
+    "mermaid": "10.9.8",
+    "parse5": "8.1.1"
+  }
+}

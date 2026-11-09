@@ -1,0 +1,170 @@
+{
+  "exam": {
+    "code": "09.02.07-5-2026",
+    "level": "Базовый уровень",
+    "duration": "2 часа 30 минут",
+    "max_points": 50,
+    "source": "postgresql/assets/files/КОД 09.02.07-5-2026 Том 1.pdf",
+    "official_url": "https://bom.firpo.ru/Public/5510"
+  },
+  "modules": [
+    {
+      "id": "1",
+      "title": "Проектирование ER-диаграммы",
+      "result": "Спроектировать ER-диаграмму с ключами и связями и сохранить её в PDF.",
+      "materials": true
+    },
+    {
+      "id": "2",
+      "title": "Разработка базы данных",
+      "result": "Создать базу по ER-диаграмме и импортировать Заказчики.json.",
+      "materials": true
+    },
+    {
+      "id": "3",
+      "title": "Создание запроса",
+      "result": "Рассчитать полную стоимость заказа покупателя.",
+      "materials": false
+    },
+    {
+      "id": "4",
+      "title": "Разработка информационной системы",
+      "result": "Собрать форму входа, капчу, блокировку и панель администратора.",
+      "materials": true
+    },
+    {
+      "id": "5",
+      "title": "Разработка проектной документации",
+      "result": "Подготовить документы по разработанной системе.",
+      "materials": false
+    }
+  ],
+  "stacks": {
+    "mysql": {
+      "name": "MySQL / MariaDB",
+      "tools": "XAMPP · phpMyAdmin · Visual Studio · Windows Forms",
+      "lessons": {
+        "1": {
+          "er": {
+            "title": "Разбор ER-диаграммы",
+            "file": "example_solution.md"
+          }
+        },
+        "3": {
+          "query": {
+            "title": "Разбор SQL-запроса",
+            "file": "example_solution.md"
+          }
+        },
+        "5": {
+          "note": {
+            "title": "Пояснительная записка",
+            "file": "example_solution.md"
+          },
+          "spec": {
+            "title": "Техническое задание",
+            "file": "example_tz.md"
+          },
+          "guide": {
+            "title": "Руководство пользователя",
+            "file": "example_user_doc.md"
+          }
+        },
+        "2": {
+          "constructor": {
+            "title": "Конструктор phpMyAdmin",
+            "file": "example_solution_construct.md"
+          },
+          "sql": {
+            "title": "SQL",
+            "file": "example_solution.md"
+          }
+        },
+        "4": {
+          "desktop": {
+            "title": "Конструктор форм",
+            "file": "example_solution_designer.md"
+          },
+          "code": {
+            "title": "Решение в коде",
+            "file": "example_solution.md"
+          }
+        }
+      },
+      "alternatives": {
+        "2": [
+          "sql"
+        ],
+        "4": [
+          "code"
+        ]
+      }
+    },
+    "postgresql": {
+      "name": "PostgreSQL",
+      "tools": "pgAdmin · Visual Studio · Windows Forms · Npgsql",
+      "lessons": {
+        "1": {
+          "er": {
+            "title": "Разбор ER-диаграммы",
+            "file": "example_solution.md"
+          }
+        },
+        "3": {
+          "query": {
+            "title": "Разбор SQL-запроса",
+            "file": "example_solution.md"
+          }
+        },
+        "5": {
+          "note": {
+            "title": "Пояснительная записка",
+            "file": "example_solution.md"
+          },
+          "spec": {
+            "title": "Техническое задание",
+            "file": "example_tz.md"
+          },
+          "guide": {
+            "title": "Руководство пользователя",
+            "file": "example_user_doc.md"
+          }
+        },
+        "2": {
+          "constructor": {
+            "title": "Конструктор pgAdmin",
+            "file": "example_solution_constuct.md"
+          },
+          "sql": {
+            "title": "SQL",
+            "file": "example_solution_sql.md"
+          }
+        },
+        "4": {
+          "requirements": {
+            "title": "Требования к разработке",
+            "file": "requirements.md"
+          },
+          "desktop": {
+            "title": "Решение на Windows Forms",
+            "file": "example_solution.md"
+          }
+        }
+      },
+      "alternatives": {
+        "2": [
+          "sql"
+        ]
+      }
+    }
+  },
+  "supplement": {
+    "stack": "postgresql",
+    "number": "6",
+    "title": "Модуль 6. Интеграция программных модулей",
+    "lessons": {
+      "Условие задания": "index.md",
+      "Пример решения": "example_solution.md"
+    }
+  }
+}
