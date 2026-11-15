@@ -338,34 +338,36 @@ export async function build2026(out, zip) {
     pack['Launch/db-connection.txt'] = mysql
       ? 'Server=localhost;Port=3306;Database=dairy_demo;Uid=root;Pwd=;SslMode=None;\n'
       : 'Host=localhost;Port=5432;Database=dairy_demo;Username=postgres;Password=;Search Path=app\n';
-    const requirements = 'Для запуска готового EXE нужны Windows x64, .NET Desktop Runtime 10 и выбранная локальная СУБД. Для работы с исходниками используйте Visual Studio 2026 с нагрузкой «Разработка классических приложений .NET» и .NET 10. Библиотеки уже в ZIP.';
+    const requirements = 'Пока есть интернет, установите на Windows x64 .NET Desktop Runtime 10 и '+(mysql?'XAMPP с Apache, MySQL, PHP и phpMyAdmin.':'PostgreSQL Server и pgAdmin 4. Запомните порт и пароль пользователя postgres, заданные при установке.')+' Для запуска из исходников установите Visual Studio 2026 с нагрузкой «Разработка классических приложений .NET» и .NET 10 SDK. После установки и первого открытия Visual Studio можно отключить интернет. База, картинки пазла и все пакеты для решения находятся в ZIP.';
     const sections = [
       {title:'Распакуйте ZIP',steps:[
         'Щёлкните ZIP правой кнопкой → «Извлечь всё». В распакованной папке рядом будут `Launch`, `DairyDemo.Auth.sln`, `DairyDemo.Auth`, `SQL`, `nuget-packages` и `NuGet.Config`.',
       ]},
       {title:'Импортируйте заполненную базу',steps:mysql?[
-        'В XAMPP Control Panel запустите Apache и MySQL. Убедитесь, что строка MySQL подсвечена зелёным, и запомните номер в столбце «Port(s)». Нажмите «Admin» в строке MySQL. В phpMyAdmin создайте пустую базу `dairy_demo` и выберите её в левой панели.',
-        'Откройте «Импорт», выберите `SQL/dairy_demo.sql` и запустите импорт. Файл уже содержит структуру, данные и учебные записи. Проверьте, что в таблице `users` есть `DemoUser` и `DemoAdmin`.',
+        'В XAMPP Control Panel нажмите «Start» в строках Apache и MySQL. После запуска MySQL запишите его порт из столбца «Port(s)», обычно 3306. Нажмите «Admin» в строке MySQL. В браузере откроется локальный phpMyAdmin.',
+        'В phpMyAdmin выберите «Базы данных» → «Создать базу данных». Введите `dairy_demo` и нажмите «Создать». Откройте эту базу в левой панели.',
+        'На вкладке «Импорт» выберите `SQL/dairy_demo.sql` из распакованной папки и нажмите «Импорт» внизу страницы. Дождитесь сообщения об успешном импорте. Откройте `users` → «Обзор» и найдите `DemoUser` и `DemoAdmin`. Они уже входят в этот SQL-файл.',
       ]:[
-        'Подключитесь к локальному серверу в pgAdmin. Щёлкните правой кнопкой по «Databases» → «Create → Database», задайте имя `dairy_demo` и сохраните.',
-        'Выберите `dairy_demo` → «Query Tool». Через значок папки откройте `SQL/dairy_demo.sql` и выполните (F5). В файле уже есть структура, данные и учебные записи. Обновите дерево и откройте `Schemas → app → Tables → users`. Проверьте `DemoUser` и `DemoAdmin`.',
+        'В pgAdmin раскройте «Servers» и подключитесь к локальному PostgreSQL с паролем пользователя `postgres`. Если сервера в списке нет, выберите «Servers → Register → Server». Задайте любое имя, затем на вкладке «Connection» укажите `localhost`, порт PostgreSQL (обычно 5432) и пользователя `postgres`. Подключитесь к серверу.',
+        'Щёлкните правой кнопкой по «Databases» → «Create → Database», введите `dairy_demo` и нажмите «Save». Выберите созданную базу, щёлкните правой кнопкой и откройте «Query Tool».',
+        'В «Query Tool» нажмите значок папки, откройте `SQL/dairy_demo.sql` из распакованной папки и нажмите F5. На вкладке «Messages» проверьте, что скрипт завершился успешно. Обновите дерево и откройте `Schemas → app → Tables → users`. Через «View/Edit Data → All Rows» проверьте, что есть `DemoUser` и `DemoAdmin`. Они уже входят в этот SQL-файл.',
       ]},
       {title:'Запустите готовое приложение',steps:[
-        mysql ? 'Откройте в Блокноте `Launch/db-connection.txt`. Оставьте `Server=localhost` для локальной базы. После `Port=` впишите порт из XAMPP, обычно 3306. Сверьте `Database`, `Uid` и `Pwd`. Если пароль у вашей локальной базы пустой, оставьте `Pwd=;`.'
-          : 'Откройте в Блокноте `Launch/db-connection.txt`. После `Password=` и перед следующей точкой с запятой введите пароль пользователя PostgreSQL. Это пароль от сервера, который вы указали при установке или используете в pgAdmin. Сверьте `Host`, `Port`, `Database`, `Username` и оставьте `Search Path=app`.',
-        'Сохраните файл. Дважды щёлкните `Launch/DairyDemo.Auth.exe`. Должно открыться окно входа с пазлом. Если появляется ошибка подключения, проверьте, что СУБД запущена, дамп импортирован в указанную базу, а реквизиты совпадают. Если Windows запрашивает .NET, скачайте .NET Desktop Runtime 10 по ссылке из этапа 0.',
-        {afterAccounts:'Соберите пазл. Войдите как обычный пользователь, затем перезапустите приложение и войдите как администратор.'},
+        mysql ? 'Откройте `Launch/db-connection.txt` в Блокноте. Оставьте `Server=localhost` и `Database=dairy_demo`. После `Port=` впишите порт из XAMPP. После `Uid=` и `Pwd=` укажите имя и пароль локальной учётной записи MySQL. В стандартной установке XAMPP это `Uid=root;Pwd=;`.'
+          : 'Откройте `Launch/db-connection.txt` в Блокноте. Оставьте `Host=localhost`, `Database=dairy_demo` и `Search Path=app`. Сверьте `Port` и `Username` с настройками подключения в pgAdmin. После `Password=` и перед точкой с запятой введите пароль пользователя PostgreSQL, заданный при установке или используемый в pgAdmin.',
+        'Сохраните изменения в том же файле. Дважды щёлкните `Launch/DairyDemo.Auth.exe`. Должно открыться окно входа с пазлом. Если Windows запрашивает .NET, установите Desktop Runtime 10 по ссылке в начале README. При ошибке подключения проверьте, что СУБД запущена, база `dairy_demo` заполнена, порт и реквизиты совпадают.',
+        {afterAccounts:'Введите логин и пароль приложения из списка выше. Чтобы поменять фрагменты пазла местами, щёлкните сначала по одному, затем по другому. Соберите картинку и нажмите «Войти».'+(mysql?' Закройте окно «Авторизация» кнопкой «ОК».':'')+'\nПроверьте обе роли. Для `DemoUser` должен открыться «Рабочий стол пользователя». Закройте окно, заново откройте EXE, соберите пазл и войдите как `DemoAdmin`. Откроется '+(mysql?'«Панель администратора — DemoAdmin»':'«Администратор: DemoAdmin»')+' со списком пользователей.'},
       ]},
-      {title:'Откройте или измените исходники',steps:[
-        'В Visual Studio выберите «Открыть проект или решение» и укажите `DairyDemo.Auth.sln` из распакованной папки. Для быстрого просмотра кода на сайте откройте «Примеры → Открыть файл».',
-        'Дождитесь загрузки проекта. Если пакеты отмечены предупреждениями, в «Обозревателе решений» щёлкните правой кнопкой по решению → «Восстановить пакеты NuGet». Visual Studio берёт библиотеки из папки `nuget-packages` в архиве. В «Зависимости → Пакеты» должны появиться `BCrypt.Net-Next` и `'+(mysql?'MySqlConnector':'Npgsql')+'`. При `NU1101` или `NU1102` проверьте, что ZIP распакован целиком.',
-        'Укажите реквизиты в `Launch/db-connection.txt` и нажмите F5. Visual Studio при сборке копирует тот же файл настроек, который читает готовый EXE.',
+      {title:'Запустите решение в Visual Studio через F5',steps:[
+        'Закройте готовый EXE. В Visual Studio выберите «Открыть проект или решение» и укажите `DairyDemo.Auth.sln` из распакованной папки.',
+        'Дождитесь загрузки проекта. Если пакеты отмечены предупреждениями, в «Обозревателе решений» щёлкните правой кнопкой по решению → «Восстановить пакеты NuGet». Файл `NuGet.Config` рядом с решением указывает на локальную папку `nuget-packages`. В «Зависимости → Пакеты» должны появиться `BCrypt.Net-Next` и `'+(mysql?'MySqlConnector':'Npgsql')+'`. При `NU1101` или `NU1102` проверьте, что папка с пакетами и конфигурация извлечены вместе с решением.',
+        'Нажмите F5. Visual Studio соберёт проект и скопирует настройки из уже заполненного `Launch/db-connection.txt`. В открывшемся окне соберите пазл и войдите под `DemoUser`. Закройте окно пользователя, снова нажмите F5 и проверьте вход под `DemoAdmin`.',
       ]},
     ];
     const accountText = 'Учебные записи\n\n- Пользователь · `DemoUser` / `DkipUser2026!`\n- Администратор · `DemoAdmin` / `DkipAdmin2026!`';
     const instructions = sections.map(({title,steps})=>`## ${title}\n\n`+steps.map((step,index)=>
       typeof step==='string' ? `${index+1}. ${step}` : `\n${accountText}\n\n${step.afterAccounts}`).join('\n')).join('\n\n');
-    const installerLinks = preparationLinks(stack).slice(0, 3).map(([title, href])=>`[${title}](${href})`).join(' · ');
+    const installerLinks = preparationLinks(stack).slice(0, 4).map(([title, href])=>`[${title}](${href})`).join(' · ');
     const readme = `# ${names[stack]}\n\n${requirements}\n\n${installerLinks}\n\n${instructions}\n\n## NuGet для нового проекта\n\n${packageSetup(stack)}\n`;
     pack['README.md']=readme;
     fs.writeFileSync(path.join(downloads,`dkip2026-${stack}.zip`),zip(pack));
@@ -380,7 +382,7 @@ export async function build2026(out, zip) {
   const data={official,subject,stages,tasks,criteria,variants,variantFiles,code,codeDescriptions,exampleLaunch,documents,resultFiles,
     previews:[...documents.mysql[0],designRequirements,...puzzleFiles],kimAssignments,kimPreviewPages,screens,
     stackNames:names,stackTools:Object.fromEntries(stacks.map(stack=>[stack,model.stacks[stack].tools])),
-    exampleAccounts:{note:'Используйте эти записи в учебной базе после выполнения demo-users.sql.',
+    exampleAccounts:{note:'Эти записи для входа в приложение уже добавлены в SQL/dairy_demo.sql.',
       headings:['Роль','Логин','Пароль'],rows:[['Пользователь','DemoUser','DkipUser2026!'],['Администратор','DemoAdmin','DkipAdmin2026!']]}};
   return data;
 }
