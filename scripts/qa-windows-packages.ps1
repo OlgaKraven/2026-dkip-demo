@@ -17,6 +17,12 @@ foreach($stack in 'mysql','postgresql'){
   $images=Join-Path $target 'DairyDemo.Auth\bin\Debug\net10.0-windows\Assets\captcha'
   $count=@(Get-ChildItem -LiteralPath $images -Filter '*.png').Count
   if($count -ne 4){throw ('Captcha missing in '+$stack)}
+  $sourceSettings=Join-Path $target 'Launch\db-connection.txt'
+  $builtSettings=Join-Path (Split-Path -Parent (Split-Path -Parent $images)) 'db-connection.txt'
+  if(!(Test-Path -LiteralPath $builtSettings) -or
+      (Get-FileHash -LiteralPath $builtSettings).Hash -ne (Get-FileHash -LiteralPath $sourceSettings).Hash){
+    throw ('Connection settings were not copied '+$stack)
+  }
   $application=Join-Path $target 'Launch\DairyDemo.Auth.exe'
   if(!(Test-Path -LiteralPath $application -PathType Leaf)){throw ('Launcher missing in '+$stack)}
   Write-Output "$stack offline restore and build OK, $count PNG files copied to output"

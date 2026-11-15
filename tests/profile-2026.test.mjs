@@ -90,6 +90,10 @@ test('готовые примеры содержат запуск, заполн�
     }
     assert.match(read('NuGet.Config'), /<clear\s*\/>[\s\S]*value="nuget-packages"/);
     assert.match(read('DairyDemo.Auth/DairyDemo.Auth.csproj'), /<TargetFramework>net10\.0-windows<\/TargetFramework>/);
+    assert.match(read('DairyDemo.Auth/DairyDemo.Auth.csproj'), /Content Include="\.\.\/Launch\/db-connection\.txt"[^>]+CopyToOutputDirectory="PreserveNewest"/);
+    if (stack==='postgresql') {
+      assert.match(read('DairyDemo.Auth/Services/AuthService.cs'), /catch \(NpgsqlException\)[\s\S]+Launch\/db-connection\.txt/);
+    }
     assert.ok(!names.some(file=>file.endsWith('.cmd')));
     assert.match(read('SQL/dairy_demo.sql'), /CREATE TABLE[\s\S]+DemoAdmin[\s\S]+DemoUser/i);
     assert.match(read('README.md'), /SQL\/dairy_demo\.sql[\s\S]+Launch\/DairyDemo.Auth\.exe/);

@@ -57,9 +57,9 @@ for each row execute function app.set_updated_at();
 | `DemoAdmin` | `DkipAdmin2026!` | Администратор |
 | `DemoUser` | `DkipUser2026!` | Пользователь |
 
-Для запуска откройте проект в Visual Studio с компонентом **Разработка классических приложений .NET** и средой **.NET Desktop Runtime 8**. В `Data/Db.cs` проверьте сервер, порт, имя базы и учётные данные. В загружаемом проекте эти настройки можно передать через `DKIP_DB_CONNECTION` в профиле запуска Visual Studio.
+Откройте `DairyDemo.Auth.sln` в Visual Studio 2026 с рабочей нагрузкой **Разработка классических приложений .NET**. В `Launch/db-connection.txt` проверьте сервер, порт, имя базы и пользователя. После `Password=` укажите пароль PostgreSQL, который используете в pgAdmin. Этот файл используется при запуске EXE и сборке из Visual Studio.
 
-[Текстовый дамп с таблицей пользователей](../assets/files/dairy_demo2.sql) загружайте в отдельную пустую базу через **Query Tool → Open File → Execute**. После загрузки выполните SQL для учебных пользователей.
+В готовом архиве импортируйте `SQL/dairy_demo.sql` в пустую базу через **Query Tool → Open File → Execute**. В файле уже есть данные и обе учебные учётные записи.
 
 ---
 
@@ -237,10 +237,17 @@ public static class Db
 {
 
     public static string ConnectionString =
-        "Host=localhost;Port=5432;Database=dairy_demo;Username=postgres;Password=root;Search Path=app";
+        "Host=localhost;Port=5432;Database=dairy_demo;Username=postgres;Password=;Search Path=app";
 
     public static NpgsqlConnection CreateConnection()
-        => new NpgsqlConnection(Environment.GetEnvironmentVariable("DKIP_DB_CONNECTION") ?? ConnectionString);
+    {
+        string? settings = Environment.GetEnvironmentVariable("DKIP_DB_CONNECTION");
+        string settingsFile = Path.Combine(AppContext.BaseDirectory, "db-connection.txt");
+        if (string.IsNullOrWhiteSpace(settings) && File.Exists(settingsFile))
+            settings = File.ReadAllText(settingsFile).Trim();
+
+        return new NpgsqlConnection(string.IsNullOrWhiteSpace(settings) ? ConnectionString : settings);
+    }
 }
 ```
 
