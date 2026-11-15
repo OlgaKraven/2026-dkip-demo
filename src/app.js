@@ -734,11 +734,19 @@ function examples() {
           <a class="btn primary" href="${E(guide.download)}" download>Скачать ZIP · ${E(desktop)}</a>
           ${btn('Инструкция по запуску','type="button" id="example-launch" aria-haspopup="dialog"')}
         </div>
+        <h3>Запуск после скачивания</h3>
+        <ol>
+          <li>Распакуйте ZIP и импортируйте заполненную базу из <code>SQL/dairy_demo.sql</code>.</li>
+          <li>Проверьте реквизиты в <code>Launch/db-connection.txt</code>. Откройте <code>Launch/DairyDemo.Auth.exe</code>, соберите пазл и проверьте вход под обеими ролями.</li>
+          <li>Для запуска из Visual Studio откройте <code>DairyDemo.Auth.sln</code> и нажмите F5. Пакеты NuGet будут восстановлены из папки <code>nuget-packages</code> в архиве.</li>
+        </ol>
+        <p>Подробные шаги доступны по кнопке «Инструкция по запуску» и в <code>README.md</code> внутри архива.</p>
         ${exampleAccountsBlock('example-accounts-note')}
+        <p>${D.examLinks.map(([title,href])=>link(title,href)).join(' · ')}</p>
       </article>
       <article class="route-panel">
         <h2>Внутри проекта</h2>
-        <p>Здесь можно посмотреть исходники без установки программ. Для запуска скачайте и распакуйте ZIP.</p>
+        <p>Выберите файл и нажмите «Открыть файл», чтобы посмотреть исходники в браузере.</p>
         ${exampleFilePicker('example-file',firstFile,activeStack)}
         <p id="example-file-description" class="file-description" aria-live="polite">${E(D.codeDescriptions[firstFile])}</p>
         ${btn('Открыть файл','id="open-file"')}

@@ -7,7 +7,7 @@ import { cases } from './cases-2026.mjs';
 import { archiveEntries, archiveEntry } from './archive.mjs';
 import { lessonFoundation } from './help-2026.mjs';
 import { offlineConfig, offlinePackages } from './nuget-2026.mjs';
-import { packageSetup, preparation, preparationLinks } from './preparation-2026.mjs';
+import { examLinks, packageSetup, preparation, preparationLinks } from './preparation-2026.mjs';
 import { publishExample } from './publish-example.mjs';
 
 const source = path.resolve(process.env.COURSE_SOURCE || 'course-source');
@@ -131,10 +131,8 @@ const stages = Object.fromEntries(stacks.map(stack=>[stack,[
     {title:'Установите и настройте программы',article:renderMarkdown(preparation(stack).install).html},
     {title:'Подготовьте библиотеки NuGet для работы без интернета',article:renderMarkdown(preparation(stack).packages).html},
     {title:'Откройте официальный образец',actions:['Откройте PDF на странице 29. Найдите пять модулей базового уровня.','Скачайте приложения и распакуйте их в отдельную рабочую папку.'],check:'В папке есть исходные документы и приложения к модулям 1, 2 и 4.',why:'Эти файлы используются при разработке модели, импорте и проверке интерфейса.',resources:['kim','archive']},
-    {title:'Проверьте запуск готового примера',article:renderMarkdown(
-      `Откройте [Примеры · ${names[stack]}](?mode=examples&stack=${stack}). Для просмотра исходников выберите файл и нажмите **Открыть файл**. Для запуска скачайте ZIP, распакуйте его и откройте **Инструкцию по запуску**. Такой же порядок находится в README.md внутри архива.
-
-Импортируйте заполненную базу из \`SQL/dairy_demo.sql\`, проверьте реквизиты в \`Launch/db-connection.txt\` и откройте \`Launch/DairyDemo.Auth.exe\`. Окно входа должно открыться с пазлом. Проверьте вход под обеими ролями. Для самостоятельной разработки отдельно проверьте, что исходники собираются с локальными NuGet-пакетами.`).html},
+    {title:'Скачайте готовый пример',article:renderMarkdown(
+      `[Скачать проект и открыть инструкцию · ${names[stack]}](?mode=examples&stack=${stack}&exampleStack=${stack})`).html},
     {title:'ЧаВО по демонстрационному экзамену',article:renderMarkdown(preparation(stack).faq).html},
   ]},
   ...tasks.map(task=>{
@@ -379,7 +377,7 @@ export async function build2026(out, zip) {
     postgresql:{login:['postgresql/assets/images/30.png','Окно входа'], 'm4-student':['postgresql/assets/images/32.png','Окно пользователя'], 'm4-admin':['postgresql/assets/images/31.png','Панель администратора']}
   };
   const screens=Object.fromEntries(stacks.map(stack=>[stack,Object.fromEntries(Object.entries(shotPaths[stack]).map(([id,[file,caption]])=>[id,{file:url(file),caption}]))]));
-  const data={official,subject,stages,tasks,criteria,variants,variantFiles,code,codeDescriptions,exampleLaunch,documents,resultFiles,
+  const data={official,subject,stages,tasks,criteria,variants,variantFiles,code,codeDescriptions,exampleLaunch,examLinks,documents,resultFiles,
     previews:[...documents.mysql[0],designRequirements,...puzzleFiles],kimAssignments,kimPreviewPages,screens,
     stackNames:names,stackTools:Object.fromEntries(stacks.map(stack=>[stack,model.stacks[stack].tools])),
     exampleAccounts:{note:'Используйте эти записи в учебной базе после выполнения demo-users.sql.',
