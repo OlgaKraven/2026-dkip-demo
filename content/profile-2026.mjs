@@ -1,12 +1,18 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { execFileSync, spawnSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import { parseFragment, serialize } from 'parse5';
 import { renderMarkdown } from './markdown.mjs';
 import { cases } from './cases-2026.mjs';
+import { archiveEntries, archiveEntry } from './archive.mjs';
+import { lessonFoundation } from './help-2026.mjs';
+import { offlineConfig, offlinePackages } from './nuget-2026.mjs';
+import { packageSetup, preparation, preparationLinks } from './preparation-2026.mjs';
+import { publishExample } from './publish-example.mjs';
 
 const source = path.resolve(process.env.COURSE_SOURCE || 'course-source');
 const docs = path.join(source, 'docs');
+const exampleAssets = new URL('../course-source/examples/', import.meta.url);
 const model = JSON.parse(fs.readFileSync(path.join(source, 'content/course.json'), 'utf8'));
 const stacks = Object.keys(model.stacks);
 const names = {
@@ -27,8 +33,6 @@ const publicSource = file => 'materials/source/' + file;
 const pg = 'postgresql/assets/files/';
 const xlsxPreviews = JSON.parse(fs.readFileSync(new URL('./xlsx-2026.json', import.meta.url),'utf8'));
 const originalArchive = id => path.join(docs,pg+attachments[id]);
-const archiveEntries = file => execFileSync('bsdtar',['-tf',file],{encoding:'utf8'}).split(/\r?\n/);
-const archiveEntry = (archive,entry) => execFileSync('bsdtar',['-xOf',archive,entry]);
 const officialInputs = new Map(archiveEntries(originalArchive('M1'))
   .filter(name=>/\.(xlsx|json)$/.test(name))
   .map(name=>[pg+path.basename(name),archiveEntry(originalArchive('M1'),name)]));
@@ -53,7 +57,7 @@ const tasks = model.modules.map(module => {
   const [pages, minutes, text, checks] = parts[id];
   return { id, title: module.title, pages, minutes, text, checks };
 });
-const criteria = fs.readFileSync(path.join(docs,'index.md'), 'utf8').split('\n')
+const criteria = fs.readFileSync(path.join(docs,'index.md'), 'utf8').split(/\r?\n/)
   .map(line => /^\| (.*?) \| (\d+) \|$/.exec(line))
   .filter(match => match && !match[1].includes('Итого'))
   .map(([, title, points]) => [title, Number(points)]);
@@ -111,7 +115,7 @@ const resultFiles = {
 const parseSections = text => {
   const result = [{ title:'Подготовка', body:[] }];
   let fence = false;
-  for (const line of text.split('\n')) {
+  for (const line of text.split(/\r?\n/)) {
     if (/^\s*```/.test(line)) fence = !fence;
     const heading = !fence && /^##\s+(.+)$/.exec(line);
     if (heading) result.push({title:heading[1],body:[]});
@@ -121,8 +125,17 @@ const parseSections = text => {
 };
 const lessonPaths = new Map();
 const stages = Object.fromEntries(stacks.map(stack=>[stack,[
-  {id:'documents',title:'Документы и задача',module:'Подготовка',goal:'Скачайте комплект 2026 года и разложите исходные документы по модулям.',output:'Подготовьте рабочую папку.',steps:[
+  {id:'documents',title:'Подготовка к работе',module:'Этап 0',goal:preparation(stack).required,
+    installers:preparationLinks(stack),
+    output:'Сохраните исходные файлы и локальные пакеты. Проверьте, что СУБД открывается и проект собирается без интернета.',steps:[
+    {title:'Установите и настройте программы',article:renderMarkdown(preparation(stack).install).html},
+    {title:'Подготовьте библиотеки NuGet для работы без интернета',article:renderMarkdown(preparation(stack).packages).html},
     {title:'Откройте официальный образец',actions:['Откройте PDF на странице 29. Найдите пять модулей базового уровня.','Скачайте приложения и распакуйте их в отдельную рабочую папку.'],check:'В папке есть исходные документы и приложения к модулям 1, 2 и 4.',why:'Эти файлы используются при разработке модели, импорте и проверке интерфейса.',resources:['kim','archive']},
+    {title:'Проверьте запуск готового примера',article:renderMarkdown(
+      `Откройте [Примеры · ${names[stack]}](?mode=examples&stack=${stack}). Для просмотра исходников выберите файл и нажмите **Открыть файл**. Для запуска скачайте ZIP, распакуйте его и откройте **Инструкцию по запуску**. Такой же порядок находится в README.md внутри архива.
+
+Импортируйте заполненную базу из \`SQL/dairy_demo.sql\`, проверьте реквизиты в \`Launch/db-connection.txt\` и откройте \`Launch/DairyDemo.Auth.exe\`. Окно входа должно открыться с пазлом. Проверьте вход под обеими ролями. Для самостоятельной разработки отдельно проверьте, что исходники собираются с локальными NuGet-пакетами.`).html},
+    {title:'ЧаВО по демонстрационному экзамену',article:renderMarkdown(preparation(stack).faq).html},
   ]},
   ...tasks.map(task=>{
     const number = task.id.slice(1);
@@ -161,7 +174,8 @@ function article(markdown, file) {
       const link = new URL(attr.value, 'https://local.invalid/' + file);
       const target = decodeURIComponent(link.pathname.slice(1));
       const lesson = lessonPaths.get(target.replace(/\.html$/i,'.md'));
-      if (lesson) attr.value = lessonUrl(lesson);
+      if (readyExampleArchives[target]) attr.value = readyExampleArchives[target];
+      else if (lesson) attr.value = lessonUrl(lesson);
       else {
         if (!fs.existsSync(path.join(docs,target))) throw new Error(`Ссылка ${file}: ${target} не найдена`);
         attr.value = url(target) + link.search + link.hash;
@@ -178,6 +192,10 @@ function article(markdown, file) {
   visit(fragment);
   return serialize(fragment);
 }
+const readyExampleArchives = {
+  'mysql/files/DairyDemo.Auth.zip': 'downloads/dkip2026-mysql.zip',
+  [pg + 'main.zip']: 'downloads/dkip2026-postgresql.zip',
+};
 for (const stack of stacks) for (const stage of stages[stack]) {
   for(const step of stage.steps){
     if(!step.markdown)continue;
@@ -190,20 +208,21 @@ for (const stack of stacks) for (const stage of stages[stack]) {
     const file=`${stack}/module${task.id.slice(1)}/index.md`;
     stage.condition=article(read(file),file);
   }
-  stage.foundation={guide:{title:stage.title,summary:stage.goal,exampleTitle:'Результат этапа',
-    example:stage.output,termsTitle:'Понятия',diagnosticsTitle:'Что проверить'},
-    terms:[[task?.title||'КОД',task?'Формулировка и критерии в разделе «Условие и файлы».':'Комплект оценочной документации демонстрационного экзамена.']],
-    errors:task?.checks||['Убедитесь, что открыт базовый уровень комплекта 09.02.07-5-2026.']};
+  stage.foundation=lessonFoundation(stage.id,stack);
 }
 
-export function build2026(out, zip) {
+export async function build2026(out, zip) {
   const copy = (from,to) => {fs.mkdirSync(path.dirname(to),{recursive:true});fs.copyFileSync(from,to);};
   for(const folder of ['assets/images','mysql/files','postgresql/assets/images','postgresql/assets/files']) {
-    fs.cpSync(path.join(docs,folder),path.join(out,publicSource(folder)),{recursive:true,
-      filter: file=>!/[.]gitkeep$/.test(file) && !/(?:module6|М6|TransferSimulator|ClientValidationApp|api_info|эмулятора|ТестКейс)/iu.test(path.basename(file))});
+    for (const entry of fs.readdirSync(path.join(docs,folder), {recursive:true,withFileTypes:true})) {
+      if (!entry.isFile() || /(?:\.gitkeep$|module6|М6|TransferSimulator|ClientValidationApp|api_info|эмулятора|ТестКейс)/iu.test(entry.name)) continue;
+      const file=path.join(entry.parentPath,entry.name);
+      copy(file,path.join(out,publicSource(path.relative(docs,file))));
+    }
   }
   // The contents of this complete archive include the profile-only module.
   fs.rmSync(path.join(out,publicSource(pg+'Прил_ОЗ_КОД 09.02.07-5-2026.zip')),{force:true});
+  for(const file of Object.keys(readyExampleArchives))fs.rmSync(path.join(out,publicSource(file)),{force:true});
   copy(path.join(docs,model.exam.source),path.join(out,official.pdf));
   copy('node_modules/mermaid/dist/mermaid.min.js',path.join(out,'mermaid.min.js'));
   for(const [file,bytes] of officialInputs)fs.writeFileSync(path.join(out,publicSource(file)),bytes);
@@ -267,16 +286,25 @@ export function build2026(out, zip) {
   });
   fs.writeFileSync(path.join(downloads,'exam-30-variants.zip'),zip(allCases));
   const code={}, codeDescriptions={}, exampleLaunch={};
+  const packages=await offlinePackages();
   for(const stack of stacks){
     const mysql = stack==='mysql';
     const folder=mysql?'mysql/files/':pg;
     const archive=path.join(docs,folder+(mysql?'DairyDemo.Auth.zip':'main.zip'));
-    const namesInZip=execFileSync('unzip',['-Z1',archive],{encoding:'utf8'}).trim().split(/\r?\n/);
-    const pack={};
+    const namesInZip=archiveEntries(archive).filter(Boolean);
+    const pack={
+      ...packages[stack],
+      'NuGet.Config':offlineConfig,
+      'DairyDemo.Auth.sln':fs.readFileSync(new URL('DairyDemo.Auth.sln',exampleAssets)),
+      'Open-in-Visual-Studio.cmd':fs.readFileSync(new URL('Open-in-Visual-Studio.cmd',exampleAssets),'utf8').replace(/\r?\n/g,'\r\n'),
+    };
     for(const entry of namesInZip.filter(name=>!name.endsWith('/'))){
       const file=entry.replace(/^.*?DairyDemo\.Auth\//,'');
       if(!file||file.split('/').includes('..'))throw new Error('Некорректное имя в ZIP');
-      const bytes=execFileSync('unzip',['-p',archive,entry]);
+      if(file.endsWith('.sln'))continue;
+      const bytes=file==='Data/Db.cs'
+        ? fs.readFileSync(new URL(stack+'/Db.cs',exampleAssets))
+        : archiveEntry(archive,entry);
       pack['DairyDemo.Auth/'+file]=bytes;
       if(/\.(cs|csproj|sln)$/.test(file)){
         const key='examples/'+stack+'/'+file;
@@ -286,22 +314,59 @@ export function build2026(out, zip) {
     for(const file of puzzleFiles)pack['DairyDemo.Auth/Assets/captcha/'+file.name]=fs.readFileSync(path.join(out,file.path));
     const sqlNames=mysql?['dairy_demo.sql','module3_query.sql','demo-users.sql']:['dairy_demo.sql','dairy_demo2.sql','demo-users.sql'];
     for(const name of sqlNames){
-      pack['SQL/'+name]=fs.readFileSync(path.join(docs,folder+name));
+      const original=fs.readFileSync(path.join(docs,folder+name));
+      pack['SQL/'+name]=name==='dairy_demo.sql'
+        ? Buffer.concat([original, Buffer.from('\n\n'), fs.readFileSync(path.join(docs,folder+'demo-users.sql'))])
+        : original;
       const key='examples/'+stack+'/SQL/'+name;
       code[key]=pack['SQL/'+name].toString('utf8');codeDescriptions[key]='Скрипт SQL для '+model.stacks[stack].name+'.';
     }
-    const launch = mysql
-      ? 'В XAMPP запустите MySQL и Apache. В phpMyAdmin создайте пустую базу dairy_demo и импортируйте SQL/dairy_demo.sql, затем SQL/demo-users.sql.'
-      : 'В pgAdmin создайте пустую базу dairy_demo. В Query Tool откройте SQL/dairy_demo.sql и выполните его. Затем откройте и выполните SQL/demo-users.sql.';
-    const readme = `# ${names[stack]}\n\n${launch}\n\nОткройте DairyDemo.Auth/DairyDemo.Auth.csproj в Visual Studio. Проверьте реквизиты в Data/Db.cs и запустите проект.\n\nУчебные записи: DemoUser / DkipUser2026! и DemoAdmin / DkipAdmin2026!.\n`;
+    Object.assign(pack, publishExample(pack));
+    for (const name of ['BCrypt.Net-Next','Microsoft',mysql?'MySqlConnector':'Npgsql']) {
+      pack['Licenses/'+name+'.txt']=fs.readFileSync(new URL('licenses/'+name+'.txt',exampleAssets));
+    }
+    pack['Launch/db-connection.txt'] = mysql
+      ? 'Server=localhost;Port=3306;Database=dairy_demo;Uid=root;Pwd=;SslMode=None;\n'
+      : 'Host=localhost;Port=5432;Database=dairy_demo;Username=postgres;Password=;Search Path=app\n';
+    const requirements = 'Для запуска готового EXE нужны Windows x64, .NET Desktop Runtime 8 (входит в .NET 8 SDK) и выбранная локальная СУБД. Для изменения исходников установите Visual Studio с нагрузкой «Разработка классических приложений .NET». Библиотеки уже в ZIP.';
+    const sections = [
+      {title:'Распакуйте ZIP',steps:[
+        'Щёлкните ZIP правой кнопкой → «Извлечь всё». В распакованной папке рядом будут `Launch`, `DairyDemo.Auth.sln`, `DairyDemo.Auth`, `SQL`, `nuget-packages` и `NuGet.Config`.',
+      ]},
+      {title:'Импортируйте заполненную базу',steps:mysql?[
+        'В XAMPP Control Panel запустите Apache и MySQL. Нажмите «Admin» в строке MySQL. В phpMyAdmin создайте пустую базу `dairy_demo` и выберите её в левой панели.',
+        'Откройте «Импорт», выберите `SQL/dairy_demo.sql` и запустите импорт. Файл уже содержит структуру, данные и учебные записи. Проверьте, что в таблице `users` есть `DemoUser` и `DemoAdmin`.',
+      ]:[
+        'Подключитесь к локальному серверу в pgAdmin. Щёлкните правой кнопкой по «Databases» → «Create → Database», задайте имя `dairy_demo` и сохраните.',
+        'Выберите `dairy_demo` → «Query Tool». Через значок папки откройте `SQL/dairy_demo.sql` и выполните (F5). В файле уже есть структура, данные и учебные записи. Обновите дерево и откройте `Schemas → app → Tables → users`. Проверьте `DemoUser` и `DemoAdmin`.',
+      ]},
+      {title:'Запустите готовое приложение',steps:[
+        mysql ? 'Откройте в Блокноте `Launch/db-connection.txt`. Проверьте `Server`, `Port`, `Database`, `Uid` и `Pwd`. Если пароль у вашей локальной базы пустой, оставьте `Pwd=;`.'
+          : 'Откройте в Блокноте `Launch/db-connection.txt`. В `Password=` укажите пароль сервера, заданный при установке PostgreSQL. Сверьте `Host`, `Port`, `Database`, `Username` и оставьте `Search Path=app`.',
+        'Сохраните файл. Дважды щёлкните `Launch/DairyDemo.Auth.exe`. Должно открыться окно входа с пазлом. Если появляется ошибка подключения, проверьте, что СУБД запущена, дамп импортирован в указанную базу, а реквизиты совпадают. Если Windows запрашивает .NET, установите .NET 8 SDK из этапа 0.',
+        {afterAccounts:'Соберите пазл. Войдите как обычный пользователь, затем перезапустите приложение и войдите как администратор.'},
+      ]},
+      {title:'Откройте или измените исходники',steps:[
+        'В распакованной папке дважды щёлкните `Open-in-Visual-Studio.cmd`. Он восстановит пакеты из папки `nuget-packages` и откроет `DairyDemo.Auth.sln` в Visual Studio. Для быстрого просмотра кода на сайте откройте «Примеры → Открыть файл».',
+        'В «Обозревателе решений» откройте `UI/Forms/LoginForm.cs`. В «Зависимости → Пакеты» должны быть `BCrypt.Net-Next` и `'+(mysql?'MySqlConnector':'Npgsql')+'`. После первого восстановления можно открывать `DairyDemo.Auth.sln` напрямую. При `NU1101` или `NU1102` проверьте, что ZIP извлечён целиком.',
+        'Сверьте реквизиты в `Data/Db.cs` с `Launch/db-connection.txt`, внесите свои значения и нажмите F5, чтобы запустить изменённый проект.',
+      ]},
+    ];
+    const accountText = 'Учебные записи\n\n- Пользователь · `DemoUser` / `DkipUser2026!`\n- Администратор · `DemoAdmin` / `DkipAdmin2026!`';
+    const instructions = sections.map(({title,steps})=>`## ${title}\n\n`+steps.map((step,index)=>
+      typeof step==='string' ? `${index+1}. ${step}` : `\n${accountText}\n\n${step.afterAccounts}`).join('\n')).join('\n\n');
+    const check = '## Проверка без интернета с пустой папкой пакетов\n\n'+
+      'Установите .NET 8 SDK с компонентами Windows Forms. Отключите сеть и откройте PowerShell в распакованной папке рядом с NuGet.Config.\n\n'+
+      '```powershell\n'+
+      '$testPackages = Join-Path $env:TEMP (\'dkip-nuget-\' + [guid]::NewGuid())\n'+
+      'dotnet restore .\\DairyDemo.Auth\\DairyDemo.Auth.csproj --configfile .\\NuGet.Config --packages $testPackages --no-http-cache\n'+
+      'dotnet build .\\DairyDemo.Auth\\DairyDemo.Auth.csproj --no-restore\n'+
+      '```\n';
+    const readme = `# ${names[stack]}\n\n${requirements}\n\n${instructions}\n\n## NuGet для нового проекта\n\n${packageSetup(stack)}\n\n${check}`;
     pack['README.md']=readme;
     fs.writeFileSync(path.join(downloads,`dkip2026-${stack}.zip`),zip(pack));
     exampleLaunch[stack]={name:names[stack],database:model.stacks[stack].name,desktop:'Windows Forms',readme,
-      requirements:'Windows, Visual Studio с компонентом разработки классических приложений и .NET Desktop Runtime 8.',
-      download:`downloads/dkip2026-${stack}.zip`, sections:[
-        {title:'Подготовьте базу',steps:[launch]},
-        {title:'Запустите Windows Forms',steps:['Распакуйте ZIP. Откройте `DairyDemo.Auth/DairyDemo.Auth.csproj` в Visual Studio.', 'Сверьте сервер, порт, имя базы и реквизиты в `Data/Db.cs` и запустите проект.',{afterAccounts:'Соберите пазл и проверьте вход под обеими ролями.'}]},
-      ]};
+      requirements, download:`downloads/dkip2026-${stack}.zip`, sections};
   }
   const shotPaths={
     mysql:{login:['assets/images/30.png','Окно входа'], 'm4-student':['assets/images/32.png','Окно пользователя'], 'm4-admin':['assets/images/31.png','Панель администратора']},

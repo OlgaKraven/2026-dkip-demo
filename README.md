@@ -5,3 +5,5 @@
 В учебном маршруте используется Windows Forms с MySQL, MariaDB или PostgreSQL.
 
 [Обзор экзамена](https://olgakraven.github.io/2026-dkip-demo/)
+
+[Этап 0. Подготовка программ и библиотек](https://olgakraven.github.io/2026-dkip-demo/?mode=learn&module=documents&view=brief) · [Готовые примеры с инструкцией по запуску](https://olgakraven.github.io/2026-dkip-demo/?mode=examples)

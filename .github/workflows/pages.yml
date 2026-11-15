@@ -24,10 +24,13 @@ jobs:
         with:
           node-version: '24'
           cache: npm
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '8.0.x'
       - name: Install archive and PDF tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y libarchive-tools poppler-utils unzip
+          sudo apt-get install -y libarchive-tools poppler-utils
       - run: npm ci
       - run: npm run build
       - run: npm test

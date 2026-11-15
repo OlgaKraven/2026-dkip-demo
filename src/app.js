@@ -76,7 +76,7 @@ function learningMap() {
   return `<section class="map-panel">
     <div class="map-intro">
       <h1>Маршрут обучения</h1>
-      <p>Сначала разберите исходные документы. Дальше каждый этап даёт результат для следующего.</p>
+      <p>Начните с установки программ и библиотек в этапе 0. Затем разберите исходные документы.</p>
     </div>
     <div class="map-stack">
       <label for="stack">Стек обучения</label>
@@ -92,7 +92,7 @@ function learningMap() {
         const complete = done(item.id);
         const current = !complete && item.id === active;
         const status = complete ? ' · Завершён' : current ? ' · Текущий этап' : '';
-        const preparationLabel = index===0 ? `aria-label="${E('Этап 0 · '+item.title+' · '+item.module+status)}"` : '';
+        const preparationLabel = index===0 ? `aria-label="${E(item.module+' · '+item.title+status)}"` : '';
         return `<li><button class="map-node" data-map-stage="${item.id}" aria-pressed="${item.id===stage}" ${preparationLabel} ${current?'aria-current="step"':''} ${complete?'data-completed':''}>
           <span class="map-circle" aria-hidden="true">${complete?'✓':index}</span>
           <span><strong>${E(item.title)}</strong><small>${E(item.module+status)}</small></span>
@@ -299,22 +299,14 @@ function bindFlatTabs(list, activate) {
   };
 }
 function lessonHelp(foundation) {
-  const {title,summary,exampleTitle,example,termsTitle,diagnosticsTitle,csvExport}=foundation.guide;
-  const procedure = steps=>`<ol class="lesson-help-procedure">${steps.map(([heading,action,screenshot])=>
-    `<li><strong>${E(heading)}</strong><p>${E(action)}</p>${screenshot?shot({shot:screenshot}):''}</li>`).join('')}</ol>`;
+  const {summary,exampleTitle,example}=foundation.guide;
   const glossary = entries=>`<dl class="lesson-glossary">${entries.map(([term,definition])=>
-    `<div><dt>${E(term)}</dt><dd>${Array.isArray(definition)?definition.map(line=>`<p>${E(line)}</p>`).join(''):E(definition)}</dd></div>`).join('')}</dl>`;
+    `<div><dt>${E(term)}</dt><dd>${E(definition)}</dd></div>`).join('')}</dl>`;
   const topics = [
-    ['summary','Объяснение',`<h3 id="lesson-help-title">${E(title)}</h3><p class="lesson-help-intro">${E(summary)}</p>`],
+    ['summary','Объяснение',`<h3 id="lesson-help-title">Частые вопросы</h3><p>${E(summary)}</p>${glossary(foundation.questions)}`],
     ['example','Пример',`<h3>${E(exampleTitle)}</h3>${example.split('\n').map(line=>`<p>${E(line)}</p>`).join('')}`],
-    ...(csvExport ? [['csv-export','CSV через Excel',`<h3>${E(csvExport.title)}</h3><p>${E(csvExport.intro)}</p>
-      ${procedure(csvExport.steps)}
-      <h4 class="lesson-help-procedure-heading">${E(csvExport.importTitle)}</h4>
-      ${procedure(csvExport.importSteps)}`]] : []),
-    ['terms','Термины',`<h3>${E(termsTitle)}</h3>${glossary(foundation.terms)}`],
-    ...(foundation.relationshipHelp ? [['relationships','Как читать связи',`<h3>Как читать связи</h3>${glossary(foundation.relationshipHelp)}`]] : []),
-    ['errors','Ошибки',`<h3>${E(diagnosticsTitle)}</h3><ul class="lesson-help-errors">${foundation.errors.map(error=>`<li>${E(error)}</li>`).join('')}
-      ${foundation.question?`<li><strong>${E(foundation.question)}</strong><p>${E(foundation.answer)}</p></li>`:''}</ul>`]
+    ['terms','Термины',`<h3>Понятия</h3>${glossary(foundation.terms)}`],
+    ['errors','Ошибки',`<h3>Что проверить</h3>${glossary(foundation.errors)}`]
   ];
   return `<div class="lesson-help-body">
     <nav class="lesson-tabs lesson-help-menu" role="tablist" aria-label="Темы справки">
@@ -389,6 +381,11 @@ function lessonBrief(lesson) {
   if(taskIndex<0){
     const files=taskDocuments(0);
     return `${conditionText(taskParagraphs(lesson.goal))}
+      <section class="task-files">
+        <h3>Установщики для Windows</h3>
+        <ul>${lesson.installers.map(([name,href])=>`<li>${link(name,href)}</li>`).join('')}</ul>
+        <p>${lesson.steps.map((step,index)=>`<a href="?mode=learn&module=documents&stack=${E(stack)}&view=steps&step=${index}">${E(step.title)}</a>`).join(' · ')}</p>
+      </section>
       <section class="task-files"><h3>Исходные документы</h3><ul>${documentItems(files)}</ul></section>
       ${sources()}`;
   }
@@ -422,7 +419,7 @@ function bindLessonDocuments(host) {
 }
 
 const stageNames = {
-  documents: ['Документы и задача', 'Старт'],
+  documents: ['Подготовка к работе', 'Старт'],
   M1: ['Проектирование ER', 'ER'],
   M2: ['Создание БД и импорт', 'База'],
   M3: ['Расчёт стоимости', 'Цена'],
@@ -479,7 +476,7 @@ function learn() {
     </header>
     <div class="route-layout lesson-layout">
       ${stageNavigation()}
-      <section class="route-content lesson-card${lesson.id==='M1'?' lesson-card-er':''}${lesson.id==='M2'?' lesson-card-db':''}${learningView==='help'?' lesson-card-with-help':''}" aria-labelledby="lesson-title">
+      <section class="route-content lesson-card${lesson.id==='M1'?' lesson-card-er':''}${lesson.id==='M2'?' lesson-card-db':''}" aria-labelledby="lesson-title">
         <header class="lesson-card-heading">
           <h2 id="lesson-title">${E(lesson.title)}</h2>
           <p class="task-meta">${E(lesson.module)}</p>
@@ -509,7 +506,7 @@ function learn() {
             ${step.source?`<p class="source-note">Источник · ${E(step.source)}</p>`:''}
             ${explain(step,lesson.id==='M1')}
           ` : `<div class="lesson-result">
-            ${stage==='documents'?'<p>Распакуйте архивы к заданиям 1, 2 и 4 и сохраните исходные документы в рабочей папке.</p>':''}
+            ${stage==='documents'?`<p>${E(lesson.output)}</p>`:''}
             ${stage==='M1'?'<p>Откройте сохранённый PDF и проверьте, что читаются таблицы, ключи и связи.</p>':''}
             ${resultFiles(stage)}
           </div>`}
@@ -732,7 +729,7 @@ function examples() {
     <div class="example-grid">
       <article class="route-panel">
         <h2>${E(desktop)} и ${E(guide.database)}</h2>
-        <p>В ZIP входят проект Windows Forms, SQL-дамп и скрипт учебных учётных записей.</p>
+        <p>В ZIP есть готовый EXE, заполненная база для импорта, исходники, пакеты NuGet и инструкция.</p>
         <div class="example-actions">
           <a class="btn primary" href="${E(guide.download)}" download>Скачать ZIP · ${E(desktop)}</a>
           ${btn('Инструкция по запуску','type="button" id="example-launch" aria-haspopup="dialog"')}
@@ -741,7 +738,7 @@ function examples() {
       </article>
       <article class="route-panel">
         <h2>Внутри проекта</h2>
-        <p>Откройте файл, чтобы прочитать код и скопировать его.</p>
+        <p>Здесь можно посмотреть исходники без установки программ. Для запуска скачайте и распакуйте ZIP.</p>
         ${exampleFilePicker('example-file',firstFile,activeStack)}
         <p id="example-file-description" class="file-description" aria-live="polite">${E(D.codeDescriptions[firstFile])}</p>
         ${btn('Открыть файл','id="open-file"')}

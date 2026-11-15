@@ -1,16 +1,23 @@
 $ErrorActionPreference='Stop'
-$share=Join-Path (Split-Path -Parent $PSScriptRoot) 'site\downloads'
-$work=Join-Path $env:TEMP ('Dkip2026PackageCheck-'+[guid]::NewGuid().ToString('N'))
-New-Item -ItemType Directory -Path $work | Out-Null
+$root=Split-Path -Parent $PSScriptRoot
+$share=Join-Path $root 'site\downloads'
+$work=Join-Path $root ('output\Dkip2026PackageCheck-'+[guid]::NewGuid().ToString('N'))
+New-Item -ItemType Directory -Force -Path $work | Out-Null
 foreach($stack in 'mysql','postgresql'){
   $zip=Join-Path $share ("dkip2026-"+$stack+'.zip')
   $target=Join-Path $work $stack
   Expand-Archive -LiteralPath $zip -DestinationPath $target
   $project=Join-Path $target 'DairyDemo.Auth\DairyDemo.Auth.csproj'
-  & dotnet build $project --nologo -v quiet -p:NuGetAudit=false
+  $config=Join-Path $target 'NuGet.Config'
+  $emptyPackages=Join-Path $work "restore-$stack"
+  & dotnet restore $project --configfile $config --packages $emptyPackages --no-http-cache --nologo
+  if($LASTEXITCODE -ne 0){ throw ('Offline restore failed '+$stack) }
+  & dotnet build $project --no-restore --nologo -v quiet
   if($LASTEXITCODE -ne 0){ throw ('Build failed '+$stack) }
   $images=Join-Path $target 'DairyDemo.Auth\bin\Debug\net8.0-windows\Assets\captcha'
   $count=@(Get-ChildItem -LiteralPath $images -Filter '*.png').Count
   if($count -ne 4){throw ('Captcha missing in '+$stack)}
-  Write-Output "$stack build OK, $count PNG files copied to output"
+  $application=Join-Path $target 'Launch\DairyDemo.Auth.exe'
+  if(!(Test-Path -LiteralPath $application -PathType Leaf)){throw ('Launcher missing in '+$stack)}
+  Write-Output "$stack offline restore and build OK, $count PNG files copied to output"
 }

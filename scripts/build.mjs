@@ -5,7 +5,7 @@ import {build2026,teacherCostFiles} from '../content/profile-2026.mjs';
 import {deck2026} from '../content/deck-2026.mjs';
 const out='site';fs.mkdirSync(out,{recursive:true});
 for(const f of fs.readdirSync('src'))fs.copyFileSync('src/'+f,out+'/'+f);
-const data=build2026(out,ExamCore.zip);
+const data=await build2026(out,ExamCore.zip);
 const er=await er2026(data);
 fs.writeFileSync(out+'/er-data.js','globalThis.ER_GUIDE='+JSON.stringify(er)+';');
 fs.writeFileSync(out+'/content.js','globalThis.COURSE='+JSON.stringify(data)+';');

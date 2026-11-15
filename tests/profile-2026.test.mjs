@@ -2,8 +2,9 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
-import { execFileSync } from 'node:child_process';
 import { parseFragment } from 'parse5';
+import { archiveEntries, archiveEntry } from '../content/archive.mjs';
+import { nugetPackages } from '../content/nuget-2026.mjs';
 import '../site/core.js';
 import '../site/content.js';
 import '../site/er-data.js';
@@ -57,8 +58,7 @@ test('официальные файлы 2026 отделены от файлов 
   const ids=course.variants.map(item=>item.id);
   assert.equal(new Set(ids).size,30);
   assert.equal(new Set(course.variants.map(item=>item.targetOrder)).size,30);
-  const entries = zip=>execFileSync('bsdtar',['-tf',zip],{encoding:'utf8'}).trim().split('\n');
-  assert.deepEqual(entries('site/downloads/exam-30-variants.zip'),ids.map(id=>id+'.zip'));
+  assert.deepEqual(archiveEntries('site/downloads/exam-30-variants.zip'),ids.map(id=>id+'.zip'));
   for(const {id,tasks,targetOrder} of course.variants){
     assert.equal(tasks.length,5);
     assert.ok(tasks[2].text.includes(targetOrder));
@@ -68,10 +68,43 @@ test('официальные файлы 2026 отделены от файлов 
     assert.equal(json.length,6);
     assert.equal(new Set(json.map(item=>item.id)).size,6);
     const archive='site/downloads/exam-'+id+'.zip';
-    assert.deepEqual(new Set(entries(archive)),new Set(['Условие.md','Исходные данные.xlsx','Заказчики.json','Требования к разработке.pdf',...puzzle.map(file=>'Капча/'+file.name)]));
+    assert.deepEqual(new Set(archiveEntries(archive)),new Set(['Условие.md','Исходные данные.xlsx','Заказчики.json','Требования к разработке.pdf',...puzzle.map(file=>'Капча/'+file.name)]));
   }
   for(const example of Object.values(course.exampleLaunch)){
-    const names=entries('site/'+example.download);
+    const names=archiveEntries('site/'+example.download);
     for(const n of [1,2,3,4])assert.ok(names.includes('DairyDemo.Auth/Assets/captcha/'+n+'.png'));
+  }
+});
+
+test('готовые примеры содержат запуск, заполненную БД и все локальные зависимости', () => {
+  for (const [stack, example] of Object.entries(course.exampleLaunch)) {
+    const archive='site/'+example.download;
+    const names=archiveEntries(archive);
+    const read = file => archiveEntry(archive,file).toString('utf8');
+    for (const file of ['Launch/DairyDemo.Auth.exe','Launch/db-connection.txt',
+      'DairyDemo.Auth.sln','DairyDemo.Auth/DairyDemo.Auth.csproj','Open-in-Visual-Studio.cmd','NuGet.Config','SQL/dairy_demo.sql','README.md']) {
+      assert.ok(names.includes(file),file);
+    }
+    for (const [name,version] of nugetPackages[stack]) {
+      assert.ok(names.includes(`nuget-packages/${name.toLowerCase()}.${version}.nupkg`));
+    }
+    assert.match(read('NuGet.Config'), /<clear\s*\/>[\s\S]*value="nuget-packages"/);
+    assert.match(read('SQL/dairy_demo.sql'), /CREATE TABLE[\s\S]+DemoAdmin[\s\S]+DemoUser/i);
+    assert.match(read('README.md'), /SQL\/dairy_demo\.sql[\s\S]+Launch\/DairyDemo.Auth\.exe/);
+  }
+});
+
+test('этап 0 содержит настройку среды и ЧаВО, а каждый этап — предметную справку', () => {
+  for (const stages of Object.values(course.stages)) {
+    const [preparation] = stages;
+    assert.match(preparation.goal, /установите и настройте ПО/);
+    assert.ok(preparation.installers.every(([,url])=>url.startsWith('https://')));
+    assert.ok(preparation.steps.some(step=>step.article?.includes('На рабочем месте')));
+    assert.ok(preparation.steps.some(step=>step.article?.includes('.nupkg')));
+    for (const {foundation} of stages) {
+      assert.ok(foundation.questions.length >= 4);
+      assert.ok(foundation.terms.length >= 4);
+      assert.ok(foundation.errors.length >= 3);
+    }
   }
 });
