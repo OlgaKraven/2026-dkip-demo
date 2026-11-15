@@ -300,9 +300,10 @@ export async function build2026(out, zip) {
     for(const entry of namesInZip.filter(name=>!name.endsWith('/'))){
       const file=entry.replace(/^.*?DairyDemo\.Auth\//,'');
       if(!file||file.split('/').includes('..'))throw new Error('Некорректное имя в ZIP');
-      if(file.endsWith('.sln'))continue;
+      if(file.endsWith('.sln') || file==='users_table.sql')continue;
       const replacement = file==='Data/Db.cs' ? 'Db.cs'
-        : !mysql && file==='Services/AuthService.cs' ? 'AuthService.cs'
+        : file==='Services/AuthService.cs' ? 'AuthService.cs'
+        : !mysql && file==='UI/Forms/LoginForm.cs' ? 'LoginForm.cs'
         : null;
       let bytes=replacement
         ? fs.readFileSync(new URL(stack+'/'+replacement,exampleAssets))
@@ -345,14 +346,14 @@ export async function build2026(out, zip) {
         'Щёлкните ZIP правой кнопкой → «Извлечь всё». В распакованной папке рядом будут `Launch`, `DairyDemo.Auth.sln`, `DairyDemo.Auth`, `SQL`, `nuget-packages` и `NuGet.Config`.',
       ]},
       {title:'Импортируйте заполненную базу',steps:mysql?[
-        'В XAMPP Control Panel запустите Apache и MySQL. Нажмите «Admin» в строке MySQL. В phpMyAdmin создайте пустую базу `dairy_demo` и выберите её в левой панели.',
+        'В XAMPP Control Panel запустите Apache и MySQL. Убедитесь, что строка MySQL подсвечена зелёным, и запомните номер в столбце «Port(s)». Нажмите «Admin» в строке MySQL. В phpMyAdmin создайте пустую базу `dairy_demo` и выберите её в левой панели.',
         'Откройте «Импорт», выберите `SQL/dairy_demo.sql` и запустите импорт. Файл уже содержит структуру, данные и учебные записи. Проверьте, что в таблице `users` есть `DemoUser` и `DemoAdmin`.',
       ]:[
         'Подключитесь к локальному серверу в pgAdmin. Щёлкните правой кнопкой по «Databases» → «Create → Database», задайте имя `dairy_demo` и сохраните.',
         'Выберите `dairy_demo` → «Query Tool». Через значок папки откройте `SQL/dairy_demo.sql` и выполните (F5). В файле уже есть структура, данные и учебные записи. Обновите дерево и откройте `Schemas → app → Tables → users`. Проверьте `DemoUser` и `DemoAdmin`.',
       ]},
       {title:'Запустите готовое приложение',steps:[
-        mysql ? 'Откройте в Блокноте `Launch/db-connection.txt`. Проверьте `Server`, `Port`, `Database`, `Uid` и `Pwd`. Если пароль у вашей локальной базы пустой, оставьте `Pwd=;`.'
+        mysql ? 'Откройте в Блокноте `Launch/db-connection.txt`. Оставьте `Server=localhost` для локальной базы. После `Port=` впишите порт из XAMPP, обычно 3306. Сверьте `Database`, `Uid` и `Pwd`. Если пароль у вашей локальной базы пустой, оставьте `Pwd=;`.'
           : 'Откройте в Блокноте `Launch/db-connection.txt`. После `Password=` и перед следующей точкой с запятой введите пароль пользователя PostgreSQL. Это пароль от сервера, который вы указали при установке или используете в pgAdmin. Сверьте `Host`, `Port`, `Database`, `Username` и оставьте `Search Path=app`.',
         'Сохраните файл. Дважды щёлкните `Launch/DairyDemo.Auth.exe`. Должно открыться окно входа с пазлом. Если появляется ошибка подключения, проверьте, что СУБД запущена, дамп импортирован в указанную базу, а реквизиты совпадают. Если Windows запрашивает .NET, скачайте .NET Desktop Runtime 10 по ссылке из этапа 0.',
         {afterAccounts:'Соберите пазл. Войдите как обычный пользователь, затем перезапустите приложение и войдите как администратор.'},
