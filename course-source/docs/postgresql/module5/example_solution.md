@@ -12,7 +12,7 @@ DairyDemo.Auth — модуль авторизации информационн�
 C#
 
 **Платформа:**  
-.NET 8.0 (Windows)
+.NET 10 (Windows)
 
 **СУБД:**  
 PostgreSQL

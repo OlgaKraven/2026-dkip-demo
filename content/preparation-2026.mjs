@@ -1,15 +1,17 @@
 import { downloadPackage, nugetPackages } from './nuget-2026.mjs';
 
-const visualStudio = 'https://aka.ms/vs/17/release/vs_community.exe';
-const dotnet = 'https://aka.ms/dotnet/8.0/dotnet-sdk-win-x64.exe';
+const visualStudio = 'https://aka.ms/vs/stable/vs_community.exe';
+const dotnet = 'https://aka.ms/dotnet/10.0/dotnet-sdk-win-x64.exe';
+const desktopRuntime = 'https://aka.ms/dotnet/10.0/windowsdesktop-runtime-win-x64.exe';
 const xampp = 'https://sourceforge.net/projects/xampp/files/XAMPP%20Windows/8.2.12/xampp-windows-x64-8.2.12-0-VS16-installer.exe/download';
 const postgresql = 'https://get.enterprisedb.com/postgresql/postgresql-17.12-1-windows-x64.exe';
 const sevenZip = 'https://www.7-zip.org/a/7z2501-x64.exe';
 const diagrams = 'https://github.com/jgraph/drawio-desktop/releases/download/v29.0.3/draw.io-29.0.3-windows-installer.exe';
 
 export const preparationLinks = stack => [
-  ['Visual Studio Community 2022', visualStudio],
-  ['.NET 8 SDK', dotnet],
+  ['Visual Studio Community 2026', visualStudio],
+  ['.NET 10 SDK для разработки', dotnet],
+  ['.NET Desktop Runtime 10 для запуска EXE', desktopRuntime],
   stack === 'mysql' ? ['XAMPP', xampp] : ['PostgreSQL с pgAdmin', postgresql],
   ['diagrams.net Desktop', diagrams],
   ['7-Zip', sevenZip],
@@ -20,8 +22,8 @@ const tools = {
   postgresql: `Скачайте [PostgreSQL 17 с pgAdmin для Windows x64](${postgresql}). В установщике оставьте PostgreSQL Server и pgAdmin 4. Задайте пароль пользователя \`postgres\` и запишите порт (по умолчанию 5432). По окончании установки откройте pgAdmin. В списке **Servers** откройте локальный сервер и введите пароль PostgreSQL. Если сервера нет, выберите **Register → Server**, на вкладке **Connection** укажите \`localhost\`, фактический порт, пользователя \`postgres\` и его пароль. Под сервером должна открыться ветка **Databases**.`,
 };
 
-const install = stack => `1. На собственном компьютере с Windows скачайте и запустите [установщик Visual Studio Community 2022](${visualStudio}). В Visual Studio Installer на вкладке **Рабочие нагрузки** отметьте **Разработка классических приложений .NET** и установите её. Если Visual Studio уже есть, откройте Installer и выберите **Изменить**.
-2. Установите [.NET 8 SDK для Windows x64](${dotnet}). Откройте Visual Studio → **Создать проект → Приложение Windows Forms (C#)**. В списке целевых платформ должен быть **.NET 8.0**. Выберите шаблон для современного .NET.
+const install = stack => `1. На компьютере с Windows откройте Visual Studio Installer. Если Visual Studio ещё нет, скачайте [Visual Studio Community 2026](${visualStudio}). Для установленной Visual Studio 2026 выберите **Изменить**. Проверьте, что выбрана рабочая нагрузка **Разработка классических приложений .NET**.
+2. В Visual Studio откройте **Создать проект → Приложение Windows Forms (C#)**. Если в списке целевых платформ есть **.NET 10.0**, можно сразу работать. Если пункта нет, проверьте установку рабочей нагрузки и при необходимости добавьте [.NET 10 SDK для Windows x64](${dotnet}). Уже установленные версии .NET можно оставить. Если вы только запускаете готовый EXE и Windows просит установить .NET, достаточно [.NET Desktop Runtime 10 для Windows x64](${desktopRuntime}).
 3. ${tools[stack]}
 4. Для ER-диаграммы установите [diagrams.net Desktop для Windows](${diagrams}). Откройте приложение, создайте пустую диаграмму и проверьте **Файл → Экспортировать как → PDF**. В маршруте PostgreSQL для построения также доступен ERD Tool в pgAdmin.
 5. Проверьте, что открываются PDF, XLSX и архивы RAR. Для RAR подойдёт [7-Zip для Windows x64](${sevenZip}). ZIP распакуйте через **Извлечь всё**, RAR через **7-Zip → Распаковать в папку**.
@@ -44,13 +46,13 @@ ${directPackages(stack)}
 
 ### Подключите их к новому проекту
 
-1. В Visual Studio создайте **Приложение Windows Forms (C#)** с целевой платформой **.NET 8.0**.
+1. В Visual Studio создайте **Приложение Windows Forms (C#)** с целевой платформой **.NET 10.0**.
 2. Откройте **Сервис → Диспетчер пакетов NuGet → Параметры диспетчера пакетов → Источники пакетов**. Нажмите **+**, введите имя \`Локальные пакеты ДЭ\`, укажите папку с файлами \`.nupkg\`, нажмите **Обновить → ОК**.
 3. В **Обозревателе решений** щёлкните правой кнопкой по проекту → **Управление пакетами NuGet**. В поле **Источник пакетов** сверху справа выберите **Локальные пакеты ДЭ** и откройте вкладку **Обзор**.
 4. Найдите \`${library(stack)[0]}\`, выберите версию **${library(stack)[1]}** и нажмите **Установить**. Повторите для \`BCrypt.Net-Next\` версии **4.0.3**, если используете хеширование из примера. NuGet установит необходимые зависимости из той же папки.
 5. Отключите интернет и выберите **Сборка → Собрать решение**. Разверните **Зависимости → Пакеты**: оба установленных пакета должны быть видны, а сборка должна завершиться успешно.
 
-Если получаете \`NU1101\` или \`NU1102\`, прочитайте имя и версию недостающего пакета в окне **Список ошибок**, затем сверьте содержимое локальной папки со списком выше. Если новое решение пытается обращаться к \`nuget.org\`, на время домашней проверки отключите сетевой источник в параметрах NuGet и повторите восстановление. Чтобы проверить комплект на чистом компьютере, используйте отдельную папку восстановления, как описано в README архива.
+Если получаете \`NU1101\` или \`NU1102\`, прочитайте имя и версию недостающего пакета в окне **Список ошибок**, затем сверьте содержимое локальной папки со списком выше. Если новое решение пытается обращаться к \`nuget.org\`, на время домашней проверки отключите сетевой источник в параметрах NuGet и повторите восстановление.
 
 [Инструкция Microsoft по локальным источникам NuGet](https://learn.microsoft.com/ru-ru/nuget/hosting-packages/local-feeds)`;
 
@@ -89,7 +91,7 @@ export const examFaq = `### Что будет на базовом уровне?
 [Комплект КОД 09.02.07-5-2026](https://bom.firpo.ru/Public/5510) · [Порядок ГИА, приказ № 800](https://publication.pravo.gov.ru/document/0001202112070030) · [Изменения, приказ № 351](https://publication.pravo.gov.ru/document/0001202605270025)`;
 
 export const preparation = stack => ({
-  required: `До начала заданий установите и настройте ПО на своём компьютере с Windows. Подготовьте Visual Studio с нагрузкой «Разработка классических приложений .NET», .NET 8 SDK, выбранную СУБД и библиотеки NuGet. На демоэкзамене интернета не будет.`,
+  required: `До начала заданий установите и настройте ПО на своём компьютере с Windows. Проверьте Visual Studio 2026 с нагрузкой «Разработка классических приложений .NET» и доступность .NET 10. Настройте выбранную СУБД и библиотеки NuGet. На демоэкзамене интернета не будет.`,
   install: install(stack),
   packages: packageSetup(stack),
   faq: examFaq,

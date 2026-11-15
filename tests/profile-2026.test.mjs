@@ -82,13 +82,15 @@ test('готовые примеры содержат запуск, заполн�
     const names=archiveEntries(archive);
     const read = file => archiveEntry(archive,file).toString('utf8');
     for (const file of ['Launch/DairyDemo.Auth.exe','Launch/db-connection.txt',
-      'DairyDemo.Auth.sln','DairyDemo.Auth/DairyDemo.Auth.csproj','Open-in-Visual-Studio.cmd','NuGet.Config','SQL/dairy_demo.sql','README.md']) {
+      'DairyDemo.Auth.sln','DairyDemo.Auth/DairyDemo.Auth.csproj','NuGet.Config','SQL/dairy_demo.sql','README.md']) {
       assert.ok(names.includes(file),file);
     }
     for (const [name,version] of nugetPackages[stack]) {
       assert.ok(names.includes(`nuget-packages/${name.toLowerCase()}.${version}.nupkg`));
     }
     assert.match(read('NuGet.Config'), /<clear\s*\/>[\s\S]*value="nuget-packages"/);
+    assert.match(read('DairyDemo.Auth/DairyDemo.Auth.csproj'), /<TargetFramework>net10\.0-windows<\/TargetFramework>/);
+    assert.ok(!names.some(file=>file.endsWith('.cmd')));
     assert.match(read('SQL/dairy_demo.sql'), /CREATE TABLE[\s\S]+DemoAdmin[\s\S]+DemoUser/i);
     assert.match(read('README.md'), /SQL\/dairy_demo\.sql[\s\S]+Launch\/DairyDemo.Auth\.exe/);
   }
@@ -97,7 +99,7 @@ test('готовые примеры содержат запуск, заполн�
 test('этап 0 содержит настройку среды и ЧаВО, а каждый этап — предметную справку', () => {
   for (const stages of Object.values(course.stages)) {
     const [preparation] = stages;
-    assert.match(preparation.goal, /установите и настройте ПО/);
+    assert.match(preparation.goal, /установите и настройте ПО.*\.NET 10/);
     assert.ok(preparation.installers.every(([,url])=>url.startsWith('https://')));
     assert.ok(preparation.steps.some(step=>step.article?.includes('На рабочем месте')));
     assert.ok(preparation.steps.some(step=>step.article?.includes('.nupkg')));

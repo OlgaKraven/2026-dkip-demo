@@ -11,9 +11,9 @@ export function addApplicationSteps({step, grid, code, image, lesson, doc, examp
   ], 'В «Обзоре» две учебные записи. Пароли хранятся в виде хешей.', {links:sourceLinks});
   step('Создание проекта в Visual Studio', [
     'Откройте «Файл» → «Создать» → «Проект». Введите Windows Forms App в поиске шаблонов.',
-    'Выберите шаблон C# для .NET. Назовите проект DairyDemo.Auth и укажите .NET 8.',
+    'Выберите шаблон C# для .NET. Назовите проект DairyDemo.Auth и укажите .NET 10.',
     'В обозревателе решений нажмите ПКМ по проекту → Add → New Folder. Создайте Data, Services и UI.',
-  ], 'Создан проект Windows Forms на .NET 8.', {links:[lesson('M4',/Создание проекта/)]});
+  ], 'Создан проект Windows Forms на .NET 10.', {links:[lesson('M4',/Создание проекта/)]});
   step('Подключение NuGet', [
     'Нажмите ПКМ по проекту → «Управление пакетами NuGet» → «Обзор».',
     'Найдите MySqlConnector и установите версию 2.6.1. Затем установите BCrypt.Net-Next 4.0.3.',
@@ -32,7 +32,7 @@ export function addApplicationSteps({step, grid, code, image, lesson, doc, examp
   step('Файлы и контрол капчи', [
     'Скопируйте UI/Controls/CaptchaPuzzleControl.cs из примера. Добавьте папку Assets/captcha и четыре файла 1.png–4.png.',
     'В свойствах файлов поставьте Build Action = Content и Copy to Output Directory = Copy if newer.',
-    'Соберите проект. Проверьте, что в bin/Debug/net8.0-windows/Assets/captcha есть четыре PNG.',
+    'Соберите проект. Проверьте, что в bin/Debug/net10.0-windows/Assets/captcha есть четыре PNG.',
   ], 'Файлы доступны из папки запуска. Контрол переставляет два фрагмента по последовательным щелчкам.', {image:image(29,'Собранный пазл из материалов курса'),links:[example]});
   step('Новая форма LoginForm', [
     'В Solution Explorer нажмите ПКМ по UI/Forms → Add → Windows Form. Введите LoginForm.cs.',

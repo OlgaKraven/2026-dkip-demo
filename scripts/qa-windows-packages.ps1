@@ -14,7 +14,7 @@ foreach($stack in 'mysql','postgresql'){
   if($LASTEXITCODE -ne 0){ throw ('Offline restore failed '+$stack) }
   & dotnet build $project --no-restore --nologo -v quiet
   if($LASTEXITCODE -ne 0){ throw ('Build failed '+$stack) }
-  $images=Join-Path $target 'DairyDemo.Auth\bin\Debug\net8.0-windows\Assets\captcha'
+  $images=Join-Path $target 'DairyDemo.Auth\bin\Debug\net10.0-windows\Assets\captcha'
   $count=@(Get-ChildItem -LiteralPath $images -Filter '*.png').Count
   if($count -ne 4){throw ('Captcha missing in '+$stack)}
   $application=Join-Path $target 'Launch\DairyDemo.Auth.exe'

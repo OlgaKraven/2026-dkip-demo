@@ -296,15 +296,18 @@ export async function build2026(out, zip) {
       ...packages[stack],
       'NuGet.Config':offlineConfig,
       'DairyDemo.Auth.sln':fs.readFileSync(new URL('DairyDemo.Auth.sln',exampleAssets)),
-      'Open-in-Visual-Studio.cmd':fs.readFileSync(new URL('Open-in-Visual-Studio.cmd',exampleAssets),'utf8').replace(/\r?\n/g,'\r\n'),
     };
     for(const entry of namesInZip.filter(name=>!name.endsWith('/'))){
       const file=entry.replace(/^.*?DairyDemo\.Auth\//,'');
       if(!file||file.split('/').includes('..'))throw new Error('Некорректное имя в ZIP');
       if(file.endsWith('.sln'))continue;
-      const bytes=file==='Data/Db.cs'
+      let bytes=file==='Data/Db.cs'
         ? fs.readFileSync(new URL(stack+'/Db.cs',exampleAssets))
         : archiveEntry(archive,entry);
+      if (file==='DairyDemo.Auth.csproj') {
+        bytes=Buffer.from(bytes.toString('utf8').replace(/<TargetFramework>[^<]+<\/TargetFramework>/,
+          '<TargetFramework>net10.0-windows</TargetFramework>'));
+      }
       pack['DairyDemo.Auth/'+file]=bytes;
       if(/\.(cs|csproj|sln)$/.test(file)){
         const key='examples/'+stack+'/'+file;
@@ -328,7 +331,7 @@ export async function build2026(out, zip) {
     pack['Launch/db-connection.txt'] = mysql
       ? 'Server=localhost;Port=3306;Database=dairy_demo;Uid=root;Pwd=;SslMode=None;\n'
       : 'Host=localhost;Port=5432;Database=dairy_demo;Username=postgres;Password=;Search Path=app\n';
-    const requirements = 'Для запуска готового EXE нужны Windows x64, .NET Desktop Runtime 8 (входит в .NET 8 SDK) и выбранная локальная СУБД. Для изменения исходников установите Visual Studio с нагрузкой «Разработка классических приложений .NET». Библиотеки уже в ZIP.';
+    const requirements = 'Для запуска готового EXE нужны Windows x64, .NET Desktop Runtime 10 и выбранная локальная СУБД. Для работы с исходниками используйте Visual Studio 2026 с нагрузкой «Разработка классических приложений .NET» и .NET 10. Библиотеки уже в ZIP.';
     const sections = [
       {title:'Распакуйте ZIP',steps:[
         'Щёлкните ZIP правой кнопкой → «Извлечь всё». В распакованной папке рядом будут `Launch`, `DairyDemo.Auth.sln`, `DairyDemo.Auth`, `SQL`, `nuget-packages` и `NuGet.Config`.',
@@ -343,26 +346,20 @@ export async function build2026(out, zip) {
       {title:'Запустите готовое приложение',steps:[
         mysql ? 'Откройте в Блокноте `Launch/db-connection.txt`. Проверьте `Server`, `Port`, `Database`, `Uid` и `Pwd`. Если пароль у вашей локальной базы пустой, оставьте `Pwd=;`.'
           : 'Откройте в Блокноте `Launch/db-connection.txt`. В `Password=` укажите пароль сервера, заданный при установке PostgreSQL. Сверьте `Host`, `Port`, `Database`, `Username` и оставьте `Search Path=app`.',
-        'Сохраните файл. Дважды щёлкните `Launch/DairyDemo.Auth.exe`. Должно открыться окно входа с пазлом. Если появляется ошибка подключения, проверьте, что СУБД запущена, дамп импортирован в указанную базу, а реквизиты совпадают. Если Windows запрашивает .NET, установите .NET 8 SDK из этапа 0.',
+        'Сохраните файл. Дважды щёлкните `Launch/DairyDemo.Auth.exe`. Должно открыться окно входа с пазлом. Если появляется ошибка подключения, проверьте, что СУБД запущена, дамп импортирован в указанную базу, а реквизиты совпадают. Если Windows запрашивает .NET, скачайте .NET Desktop Runtime 10 по ссылке из этапа 0.',
         {afterAccounts:'Соберите пазл. Войдите как обычный пользователь, затем перезапустите приложение и войдите как администратор.'},
       ]},
       {title:'Откройте или измените исходники',steps:[
-        'В распакованной папке дважды щёлкните `Open-in-Visual-Studio.cmd`. Он восстановит пакеты из папки `nuget-packages` и откроет `DairyDemo.Auth.sln` в Visual Studio. Для быстрого просмотра кода на сайте откройте «Примеры → Открыть файл».',
-        'В «Обозревателе решений» откройте `UI/Forms/LoginForm.cs`. В «Зависимости → Пакеты» должны быть `BCrypt.Net-Next` и `'+(mysql?'MySqlConnector':'Npgsql')+'`. После первого восстановления можно открывать `DairyDemo.Auth.sln` напрямую. При `NU1101` или `NU1102` проверьте, что ZIP извлечён целиком.',
+        'В Visual Studio выберите «Открыть проект или решение» и укажите `DairyDemo.Auth.sln` из распакованной папки. Для быстрого просмотра кода на сайте откройте «Примеры → Открыть файл».',
+        'Дождитесь загрузки проекта. Если пакеты отмечены предупреждениями, в «Обозревателе решений» щёлкните правой кнопкой по решению → «Восстановить пакеты NuGet». Visual Studio берёт библиотеки из папки `nuget-packages` в архиве. В «Зависимости → Пакеты» должны появиться `BCrypt.Net-Next` и `'+(mysql?'MySqlConnector':'Npgsql')+'`. При `NU1101` или `NU1102` проверьте, что ZIP распакован целиком.',
         'Сверьте реквизиты в `Data/Db.cs` с `Launch/db-connection.txt`, внесите свои значения и нажмите F5, чтобы запустить изменённый проект.',
       ]},
     ];
     const accountText = 'Учебные записи\n\n- Пользователь · `DemoUser` / `DkipUser2026!`\n- Администратор · `DemoAdmin` / `DkipAdmin2026!`';
     const instructions = sections.map(({title,steps})=>`## ${title}\n\n`+steps.map((step,index)=>
       typeof step==='string' ? `${index+1}. ${step}` : `\n${accountText}\n\n${step.afterAccounts}`).join('\n')).join('\n\n');
-    const check = '## Проверка без интернета с пустой папкой пакетов\n\n'+
-      'Установите .NET 8 SDK с компонентами Windows Forms. Отключите сеть и откройте PowerShell в распакованной папке рядом с NuGet.Config.\n\n'+
-      '```powershell\n'+
-      '$testPackages = Join-Path $env:TEMP (\'dkip-nuget-\' + [guid]::NewGuid())\n'+
-      'dotnet restore .\\DairyDemo.Auth\\DairyDemo.Auth.csproj --configfile .\\NuGet.Config --packages $testPackages --no-http-cache\n'+
-      'dotnet build .\\DairyDemo.Auth\\DairyDemo.Auth.csproj --no-restore\n'+
-      '```\n';
-    const readme = `# ${names[stack]}\n\n${requirements}\n\n${instructions}\n\n## NuGet для нового проекта\n\n${packageSetup(stack)}\n\n${check}`;
+    const installerLinks = preparationLinks(stack).slice(0, 3).map(([title, href])=>`[${title}](${href})`).join(' · ');
+    const readme = `# ${names[stack]}\n\n${requirements}\n\n${installerLinks}\n\n${instructions}\n\n## NuGet для нового проекта\n\n${packageSetup(stack)}\n`;
     pack['README.md']=readme;
     fs.writeFileSync(path.join(downloads,`dkip2026-${stack}.zip`),zip(pack));
     exampleLaunch[stack]={name:names[stack],database:model.stacks[stack].name,desktop:'Windows Forms',readme,

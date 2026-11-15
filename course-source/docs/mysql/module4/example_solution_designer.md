@@ -14,7 +14,7 @@
 ## 1. Создание проекта
 
 1. `File → New → Project` → **Windows Forms App (.NET)**.
-2. Имя проекта: `DairyDemo.Auth`, фреймворк: **.NET 8**.
+2. Назовите проект `DairyDemo.Auth` и выберите **.NET 10**.
 3. Создайте папки: `Data/Models/`, `Data/Repositories/`, `Services/`, `UI/Controls/`, `UI/Forms/`.
 4. Добавьте NuGet-пакеты (ПКМ на проекте → «Управление пакетами NuGet»):
     - `MySqlConnector`

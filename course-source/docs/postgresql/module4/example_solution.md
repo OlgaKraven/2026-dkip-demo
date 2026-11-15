@@ -67,7 +67,7 @@ for each row execute function app.set_updated_at();
 
 ### 3.1. Создать проект
 
-* Visual Studio → **Windows Forms App (.NET)** (лучше .NET 8/9, если доступно)
+* Visual Studio 2026 → **Windows Forms App (.NET)** → **.NET 10**
 * Имя: `DairyDemo.Auth` (или под ваш проект)
 
 ### 3.2. NuGet пакеты
@@ -1517,4 +1517,4 @@ internal static class Program
 
 >Внимание! Не заработает без базы данных и установленного postgress.
 
-👉 [Пример готового приложения](../assets/files/main.zip)
+[Скачать готовый пример с исходниками и заполненной базой](../assets/files/main.zip)

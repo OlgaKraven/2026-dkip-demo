@@ -14,9 +14,8 @@ export const nugetPackages = {
   postgresql: [
     ['Npgsql', '10.0.1', '71be33f961fdab29d2ea7e08e371734a289f58bce01f6e8700ffc39d9bec8da9'],
     bcrypt,
-    ['Microsoft.Extensions.Logging.Abstractions', '8.0.0', '26675d8de83c5394be8814f046554054b7881f1738cabacd82a54c381ec48cce'],
-    ['Microsoft.Extensions.DependencyInjection.Abstractions', '8.0.0', 'ef92b31065a36d110b7332690a226e6fe96d35430c6f3e40ff529053ee5d80ff'],
-    ['System.Diagnostics.DiagnosticSource', '9.0.11', '70ac40e2d56ec7034eacdea703e189c2723d50d6801969bc90d846f6a93c810b'],
+    ['Microsoft.Extensions.Logging.Abstractions', '10.0.0', '067860199734d47c134b1a206afabb51eab857b88c037c0f9db7d1c10e118469'],
+    ['Microsoft.Extensions.DependencyInjection.Abstractions', '10.0.0', 'f62a1d5cfdfd62a831a269ce3cec5dfe6cdb1b425f3925f3168354de8993d8fb'],
   ],
 };
 
@@ -26,6 +25,13 @@ export const downloadPackage = (name, version) =>
 
 export const offlineConfig = `<?xml version="1.0" encoding="utf-8"?>
 <configuration>
+  <config>
+    <add key="globalPackagesFolder" value=".nuget/packages" />
+  </config>
+  <packageRestore>
+    <add key="enabled" value="True" />
+    <add key="automatic" value="True" />
+  </packageRestore>
   <packageSources>
     <clear />
     <add key="DKIP offline" value="nuget-packages" />
@@ -38,12 +44,12 @@ export const offlineConfig = `<?xml version="1.0" encoding="utf-8"?>
 
 const sourceNotice = `# Пакеты NuGet
 
-Здесь хранятся оригинальные файлы .nupkg для .NET 8. Сведения об авторах и лицензиях доступны в пакетах и на страницах NuGet.
+Здесь хранятся оригинальные файлы .nupkg для .NET 10. Сведения об авторах и лицензиях доступны в пакетах и на страницах NuGet.
 
 - [MySqlConnector](https://www.nuget.org/packages/MySqlConnector/2.6.1) · [MIT](https://github.com/mysql-net/MySqlConnector/blob/2.6.1/LICENSE)
 - [Npgsql](https://www.nuget.org/packages/Npgsql/10.0.1) · [PostgreSQL License](https://github.com/npgsql/npgsql/blob/v10.0.1/LICENSE)
 - [BCrypt.Net-Next](https://www.nuget.org/packages/BCrypt.Net-Next/4.0.3) · [лицензия](https://github.com/BcryptNet/bcrypt.net/blob/main/licence.txt)
-- [Microsoft.Extensions.Logging.Abstractions](https://www.nuget.org/packages/Microsoft.Extensions.Logging.Abstractions), [Microsoft.Extensions.DependencyInjection.Abstractions](https://www.nuget.org/packages/Microsoft.Extensions.DependencyInjection.Abstractions), [System.Diagnostics.DiagnosticSource](https://www.nuget.org/packages/System.Diagnostics.DiagnosticSource) · MIT
+- [Microsoft.Extensions.Logging.Abstractions](https://www.nuget.org/packages/Microsoft.Extensions.Logging.Abstractions), [Microsoft.Extensions.DependencyInjection.Abstractions](https://www.nuget.org/packages/Microsoft.Extensions.DependencyInjection.Abstractions) · MIT
 `;
 
 async function readPackage([name, version, expectedHash]) {

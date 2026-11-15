@@ -981,5 +981,4 @@ internal static class Program
 
 [Скачать DairyDemo.Auth.zip](../files/DairyDemo.Auth.zip){ .md-button }
 
-> ZIP содержит все исходные файлы проекта: `DairyDemo.Auth/` со всеми `.cs` и `.csproj`, а также `users_table.sql` для создания таблицы в phpMyAdmin.
-> Единственное, что нужно добавить вручную — 4 изображения капчи в `Assets/captcha/` (1.png–4.png) с `Build Action = Content`, `Copy to Output = PreserveNewest`.
+> В ZIP есть решение `DairyDemo.Auth.sln`, готовое приложение, четыре изображения капчи, заполненная база `SQL/dairy_demo.sql` и пакеты NuGet. Порядок импорта и запуска приведён в `README.md` внутри архива.
