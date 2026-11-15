@@ -7,7 +7,7 @@ import { cases } from './cases-2026.mjs';
 import { archiveEntries, archiveEntry } from './archive.mjs';
 import { lessonFoundation } from './help-2026.mjs';
 import { offlineConfig, offlinePackages } from './nuget-2026.mjs';
-import { examLinks, packageSetup, preparation, preparationLinks } from './preparation-2026.mjs';
+import { packageSetup, preparation, preparationLinks } from './preparation-2026.mjs';
 import { publishExample } from './publish-example.mjs';
 
 const source = path.resolve(process.env.COURSE_SOURCE || 'course-source');
@@ -377,7 +377,7 @@ export async function build2026(out, zip) {
     postgresql:{login:['postgresql/assets/images/30.png','Окно входа'], 'm4-student':['postgresql/assets/images/32.png','Окно пользователя'], 'm4-admin':['postgresql/assets/images/31.png','Панель администратора']}
   };
   const screens=Object.fromEntries(stacks.map(stack=>[stack,Object.fromEntries(Object.entries(shotPaths[stack]).map(([id,[file,caption]])=>[id,{file:url(file),caption}]))]));
-  const data={official,subject,stages,tasks,criteria,variants,variantFiles,code,codeDescriptions,exampleLaunch,examLinks,documents,resultFiles,
+  const data={official,subject,stages,tasks,criteria,variants,variantFiles,code,codeDescriptions,exampleLaunch,documents,resultFiles,
     previews:[...documents.mysql[0],designRequirements,...puzzleFiles],kimAssignments,kimPreviewPages,screens,
     stackNames:names,stackTools:Object.fromEntries(stacks.map(stack=>[stack,model.stacks[stack].tools])),
     exampleAccounts:{note:'Используйте эти записи в учебной базе после выполнения demo-users.sql.',

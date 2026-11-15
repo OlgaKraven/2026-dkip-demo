@@ -741,8 +741,6 @@ function examples() {
           <li>Для запуска из Visual Studio откройте <code>DairyDemo.Auth.sln</code> и нажмите F5. Пакеты NuGet будут восстановлены из папки <code>nuget-packages</code> в архиве.</li>
         </ol>
         <p>Подробные шаги доступны по кнопке «Инструкция по запуску» и в <code>README.md</code> внутри архива.</p>
-        ${exampleAccountsBlock('example-accounts-note')}
-        <p>${D.examLinks.map(([title,href])=>link(title,href)).join(' · ')}</p>
       </article>
       <article class="route-panel">
         <h2>Внутри проекта</h2>
