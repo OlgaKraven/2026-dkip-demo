@@ -120,6 +120,9 @@ test('этап 0 содержит настройку среды и ЧаВО, а 
     assert.ok(preparation.installers.every(([,url])=>url.startsWith('https://')));
     assert.ok(preparation.steps.some(step=>step.article?.includes('На рабочем месте')));
     assert.ok(preparation.steps.some(step=>step.article?.includes('.nupkg')));
+    const faq = preparation.steps.find(step=>step.title==='ЧаВО по демонстрационному экзамену');
+    assert.ok(faq?.article);
+    assert.doesNotMatch(faq.article, /как подать апелляцию|письменную апелляцию о нарушении порядка/i);
     for (const {foundation} of stages) {
       assert.ok(foundation.questions.length >= 4);
       assert.ok(foundation.terms.length >= 4);
