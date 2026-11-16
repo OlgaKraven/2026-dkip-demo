@@ -10,13 +10,21 @@ import '../site/content.js';
 import '../site/er-data.js';
 import '../site/deck-data.js';
 
-const { COURSE: course, ER_GUIDE: er, TEACHER_DECK: deck, ExamCore: core } = globalThis;
+const { COURSE: course, ER_GUIDE: er, TEACHER_DECKS: decks, ExamCore: core } = globalThis;
 test('локальная копия использует только базовые задания 2026', () => {
   assert.equal(course.official.code, '09.02.07-5-2026');
   assert.equal(course.official.minutes, 150);
   assert.equal(course.criteria.reduce((sum, [, n]) => sum + n, 0), 50);
   assert.deepEqual(course.tasks.map(task=>task.id), ['M1','M2','M3','M4','M5']);
-  assert.equal(deck.slides[0].title,'Демонстрационный экзамен 2026');
+  assert.deepEqual(Object.keys(decks),Object.keys(course.stages));
+  for (const [stack,deck] of Object.entries(decks)) {
+    assert.equal(deck.slides[0].title,'Демонстрационный экзамен 2026');
+    assert.equal(deck.stackName,course.stackNames[stack]);
+    assert.deepEqual(deck.chapters.slice(1,-1).map(chapter=>chapter.id),course.tasks.map(task=>task.id));
+    for (const slide of deck.slides) for (const [,url] of slide.links??[]) {
+      if (url.startsWith('index.html?')) assert.equal(new URLSearchParams(url.split('?')[1]).get('stack'),stack);
+    }
+  }
   const clock=core.freshTimer(course.official.minutes*60,'mock');
   assert.equal(core.format(core.timerView(clock).left),'02:30:00');
 });

@@ -87,7 +87,7 @@ function mount(workspace, ctx) {
 
   function detail(){const s=current();if(s.kind==='intro')return '<h3>Документы задания 1 · ДЭ 2026</h3><p class="er-origin">КОД '+E(root.ER_GUIDE.source.code)+'</p><p>Выберите этап построения, чтобы увидеть, из какого документа взято поле и как оно связано с другими таблицами.</p><ul class="er-source-list">'+root.ER_GUIDE.source.files.map(file=>'<li>'+sourceLink(file)+'</li>').join('')+'</ul>';
    if(s.kind==='report')return '<h3>Как расчёт связан с данными</h3><p>'+E(root.ER_GUIDE.report.why)+'</p>'+sourceLink(root.ER_GUIDE.report.file)+'<p>Источник: '+E(root.ER_GUIDE.report.location)+'</p>';
-   if(s.kind==='finish')return '<h3>От схемы к реализации</h3><ol><li>Проверьте источники и допущения, составные ключи и связи. Таблица «Пользователи» относится к заданию 4.</li><li>Выберите единый словарь имён латиницей. Здесь имена соответствуют готовому SQL проекта.</li><li>В новой пустой базе выполните схему выбранной СУБД. Импортируйте заказчиков, сохранив коды и сопоставление addres → address.</li><li>В конструкторе СУБД проверьте внешние ключи. Откройте задание 2 для настройки типов и ограничений.</li><li>Проверьте связи и экспортируйте ER в PDF по требованиям задания.</li></ol><p>'+sourceLink('Заказчики.json')+' · <a href="'+E(D().sqlPath)+'" target="_blank" rel="noopener">SQL схемы · '+E(ctx.stack)+'</a></p><p>Графическая справка использует ту же структуру таблиц и связей, что SQL. Значения и ограничения проверяются в СУБД.</p>';
+   if(s.kind==='finish')return '<h3>От схемы к реализации</h3><ol><li>Проверьте источники, ключи и связи. Таблица пользователей относится к заданию 4.</li><li>Сохраните рабочую схему и экспортируйте диаграмму в PDF.</li><li>Перейдите к заданию 2. В конструкторе выбранной СУБД создайте таблицы и внешние ключи по своей схеме.</li><li>Подготовьте CSV из исходного JSON. Сопоставьте addres с address, импортируйте заказчиков и сверьте шесть записей с оригиналом.</li></ol><p>'+sourceLink('Заказчики.json')+'</p>';
    const table=D().tables.find(t=>t.id===s.table);
    if(s.kind==='table')return '<h3>Почему появилась таблица «'+E(table.title)+'»?</h3><p>'+E(table.why)+'</p><p>Имя в СУБД: <code>'+E(table.id)+'</code>.</p>';
    const field=table.fields.find(item=>item.id===s.field);
@@ -121,7 +121,7 @@ function mount(workspace, ctx) {
      ${link?`<section class="er-detail-section">
        <h5>Связь</h5>
        <p><code>${E(fieldName)} <wbr>→ ${E(link.to+'.'+link.target)}</code></p>
-       <p>${E(link.cardinality)} · ${link.cardinality==='1 : 0..1'?'один к нулю или одному':'один ко многим'}</p>
+       <p>${E(link.cardinality)} · ${link.parentOptional?'Родительская запись может отсутствовать':link.cardinality==='1 : 0..1'?'один к нулю или одному':'один ко многим'}</p>
      </section>`:''}
      <section class="er-detail-section">
        <h5>Свойства в SQL</h5>
@@ -346,7 +346,7 @@ function mount(workspace, ctx) {
         path.append(title);
         svg.append(path);
         const parent=section.startPoint, child=section.endPoint;
-        for (const [key,x,y,text] of [[link.from+'.'+link.field,child.x-18,child.y-7,link.cardinality==='1 : 0..1'?'0..1':'N'],[link.to+'.'+link.target,parent.x+5,parent.y-7,'1']]) {
+        for (const [key,x,y,text] of [[link.from+'.'+link.field,child.x-18,child.y-7,link.cardinality==='1 : 0..1'?'0..1':'N'],[link.to+'.'+link.target,parent.x+5,parent.y-7,link.parentOptional?'0..1':'1']]) {
           if (text==='1' && labelledParents.has(key)) continue;
           if (text==='1') labelledParents.add(key);
           const label=svgNode('text',{class:'er-cardinality',x,y});

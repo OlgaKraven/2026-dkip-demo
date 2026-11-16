@@ -1,567 +1,460 @@
-# Модуль 2. Разработка базы данных по ER-диаграмме (PostgreSQL через pgAdmin)
+# Задание 2. Создание базы данных в конструкторе pgAdmin
 
-**Цель:** создать БД и таблицы по ER, настроить PK/FK/ограничения, затем импортировать `Заказчики.json`.
+## Создайте базу dairy_demo
 
----
+В pgAdmin раскройте локальный сервер из этапа 0. Щёлкните правой кнопкой по **Databases → Create → Database…**. В поле **Database** введите `dairy_demo`, в **Owner** оставьте роль, под которой подключились, и нажмите **Save**. Для своей локальной установки это обычно `postgres`.
 
-## 0. Важно перед стартом
+![Создание базы dairy_demo в pgAdmin](../../assets/images/preparation/postgres-m2-database.png)
 
-* Везде ниже используется **один вариант выполнения**: **Конструктор (pgAdmin GUI)**
+## Создайте схему app в новой базе
 
-* Рекомендуемая структура: схема `app` (чтобы отделить от `public`).
+Раскройте именно **Databases → dairy_demo**. Сверните открытую служебную базу `postgres`, если она использовалась для ERD Tool. Внутри `dairy_demo` щёлкните правой кнопкой по **Schemas → Create → Schema…**. Укажите **Name = app**, владельца из предыдущего шага и нажмите **Save**. Сверьте путь **Databases → dairy_demo → Schemas → app → Tables**. В эту коллекцию добавите все таблицы.
 
----
+![Имя app в диалоге создания схемы](../../assets/images/preparation/postgres-m2-schema.png)
 
-## 1. Создание базы данных
+## Освойте конструктор таблицы
 
- 
-1. Откройте **pgAdmin** → подключитесь к серверу.
+Для каждой карточки открывайте **app → Tables → Create → Table…**. В **General** запишите имя и проверьте **Schema = app**. На вкладке **Columns** нажмите кнопку **+** и заполните **Name**, **Data type**, **Not NULL?**, **Primary key?** и **Default** по таблице полей. Если значение по умолчанию обозначено тире, оставьте поле пустым. Для **PK** включите **Primary key?**. Первичный ключ PostgreSQL всегда обязателен.
 
-   ![подключитесь к серверу](../assets/images/2.png)
+Для `numeric(12,3)` выберите **Data type = numeric**, введите **Length/Precision = 12** и **Scale = 3**. Для денежной точности `numeric(12,2)` в **Scale** поставьте 2. Тип `bigserial` создаёт числовой идентификатор с автоматической выдачей следующего значения. В свойствах сохранённой колонки он отображается как `bigint` с выражением по умолчанию из последовательности.
 
-   /// caption
-   Рисунок 1 – Подключитесь к серверу
-   ///
+Нажмите **Save** и убедитесь, что имя появилось в **app → Tables**. Сначала создайте таблицы со столбцами. Ограничения добавите через свойства, когда таблицы уже есть в базе.
 
-2. Правый клик по **Databases** → **Create → Database…**
+## Создайте таблицу counterparty
 
-3. `Database`: `dairy_demo` (или имя по заданию)
+Справочник контрагентов из «Заказчики.json». Идентификаторы, ИНН и телефоны хранятся как текст, чтобы сохранить начальные нули и знак `+`.
 
-4. Owner: ваш пользователь (если доступно)
+| Поле | Тип | Обязательное | Default |
+|---|---|---|---|
+| `id` | `text` | PK | — |
+| `name` | `text` | Да | — |
+| `inn` | `text` | Нет | — |
+| `address` | `text` | Нет | — |
+| `phone` | `text` | Нет | — |
+| `is_salesman` | `boolean` | Да | `false` |
+| `is_buyer` | `boolean` | Да | `false` |
 
-5. Save.
 
-   ![подключитесь к серверу](../assets/images/3.png)
 
-   /// caption
-   Рисунок 2 – Создание БД
-   ///
 
-Подключение:
+![Вкладка Columns таблицы counterparty](../../assets/images/preparation/postgres-m2-counterparty.png)
 
-* pgAdmin: выбрать БД в дереве
+## Создайте таблицу item
 
----
+Общий справочник материалов и продукции. Код уникален, чтобы одну и ту же позицию можно было найти по исходным документам.
 
-## 2. Создание схемы (namespace) `app`
+| Поле | Тип | Обязательное | Default |
+|---|---|---|---|
+| `id` | `bigserial` | PK | — |
+| `code` | `text` | Нет | — |
+| `name` | `text` | Да | — |
+| `item_type` | `text` | Да | — |
+| `unit_default` | `text` | Нет | — |
 
 
-1. В дереве: **Schemas** → **Create → Schema…**
 
-   ![В дереве: Schemas → Create → Schema…](../assets/images/4.png)
 
-   /// caption
-   Рисунок 3 – В дереве: **Schemas** → **Create → Schema…**
-   ///
+Для шага добавления ограничений подготовьте **Unique** `uq_item_code` на поле `code`.
 
-2. Name: `app`
+Для шага добавления ограничений используйте вкладку **Check**. Заполняйте поле **Check** для каждой проверки.
 
-3. Owner: ваш пользователь
-
-4. Save.
-
-   ![app](../assets/images/5.png)
-
-   /// caption
-   Рисунок 4 – app
-   ///
-
----
-
-## 3. Создание таблиц по ER-диаграмме (через GUI)
-
-> Ниже перечислены основные сущности. Для каждой — описание через конструктор.
-
----
-
-### 3.1. COUNTERPARTY (Контрагент)
-
-
-1. **Schemas → app → Tables → Create → Table…**
-
-
-    ![**Schemas → app → Tables → Create → Table…**](../assets/images/6.png)
-
-    /// caption 
-    Рисунок 5 – **Schemas → app → Tables → Create → Table…**
-    ///
-
-
-2. Name: `counterparty`
-
-      ![counterparty](../assets/images/7.png)
-
-      /// caption
-      Рисунок 6 – counterparty
-      ///
-
-3. Вкладка **Columns** → добавьте:
-
-      ![Вкладка Columns](../assets/images/8.png)
-
-      /// caption
-      Рисунок 7 – Вкладка **Columns**
-      ///
-
-   Создайте:
-
-   * `id` type: `text`, **Primary Key**
-   * `name` type: `text`, **Not null**
-   * `inn` type: `text`
-   * `address` type: `text`
-   * `phone` type: `text`
-   * `is_salesman` type: `boolean`, default: `false`, **Not null**
-   * `is_buyer` type: `boolean`, default: `false`, **Not null**
-
-     ![Вкладка Columns](../assets/images/9.png)
-
-     /// caption
-     Рисунок 8 – Вкладка **Columns**
-     ///
-
-4. Вкладка **Constraints** → Primary Key на `id`
-
-5. Save.
-
-   ![Вкладка Constraints → Primary Key на id](../assets/images/10.png)
-
-   /// caption
-   Рисунок 9 – Вкладка **Constraints** → Primary Key на `id`
-   ///
-
----
-
-### 3.2. ITEM (Номенклатура)
-
-
-1. Create → Table… Name: `item`
-
-2. Columns:
-
-      * `id` type: `bigserial`, **PK**
-      * `code` type: `text`, Unique (см. Constraints)
-      * `name` type: `text`, Not null
-      * `item_type` type: `text`, Not null
-      * `unit_default` type: `text`
-
-3. Constraints:
-
-      * Primary Key: `id`
-      * Unique: `code`
-
-4. Check constraint (вкладка Constraints → Check):
-
-      * Name: `chk_item_type`
-      * Expression: `item_type IN ('product','material')`
-
-5. Save.
-
----
-
-### 3.3. PRICE (Прайс-лист)
-
-
-1. Create table `price`
-
-2. Columns:
-
-      * `id` bigserial PK
-      * `item_id` bigint Not null
-      * `price` numeric(12,2) Not null
-      * `effective_from` date (optional)
-      * `effective_to` date (optional)
-
-3. Foreign Keys:
-
-      * `item_id` → `app.item(id)`
-      * On update: CASCADE
-      * On delete: RESTRICT
-
-4. Check constraints:
-
-      * `price >= 0`
-      * `effective_to IS NULL OR effective_from IS NULL OR effective_to >= effective_from`
-
-5. Save.
-
----
-
-### 3.4. SPECIFICATION и SPECIFICATION_MATERIAL
-
-#### SPECIFICATION
-
-
-1. Table `specification`
-
-2. Columns:
-
-      * `id` bigserial PK
-      * `name` text Not null
-      * `product_item_id` bigint Not null
-      * `output_qty` numeric(12,3) Not null default 1
-      * `output_unit` text
-      * `manufacturer_id` text
-
-3. FK:
-
-      * `product_item_id` → `app.item(id)` (RESTRICT)
-      * `manufacturer_id` → `app.counterparty(id)` (RESTRICT)
-
-4. Check: `output_qty > 0`
-
-5. Save.
-
-#### SPECIFICATION_MATERIAL
-
-
-1. Table `specification_material`
-
-2. Columns:
-
-      * `id` bigserial PK
-      * `specification_id` bigint Not null
-      * `material_item_id` bigint Not null
-      * `qty` numeric(12,3) Not null
-      * `unit` text
-
-3. FK:
-
-      * `specification_id` → `app.specification(id)` ON DELETE CASCADE
-      * `material_item_id` → `app.item(id)` ON DELETE RESTRICT
-
-4. Unique constraint:
-
-      * `(specification_id, material_item_id)`
-
-5. Check: `qty > 0`
-
-6. Save.
-
----
-
-### 3.5. PRODUCTION_ORDER, PRODUCTION_PRODUCT_LINE, PRODUCTION_MATERIAL_LINE
-
-
-Создайте три таблицы по аналогии с предыдущими:
-
-   * сначала `production_order` (PK),
-   * затем `production_product_line` и `production_material_line` (FK на `production_order` и `item`),
-   * обязательно выставьте `ON DELETE CASCADE` на строках документа.
-
----
-
-### 3.6. CUSTOMER_ORDER и CUSTOMER_ORDER_LINE
-
-
-   * `customer_order`: поля шапки + два FK на `counterparty`
-   * `customer_order_line`: FK на `customer_order` (CASCADE) + FK на `item`
-
----
-
-### 3.7. COST_CALCULATION и COST_CALCULATION_LINE
-
-
-Аналогично: “шапка” + “строки”, на строках `ON DELETE CASCADE`.
-
----
-
-## 4. Импорт `Заказчики.json`
-
-### (через конструктор и инструменты pgAdmin)
-
-На практике **pgAdmin не поддерживает прямой импорт JSON-файла сразу в колонки таблицы** (в отличие от CSV). Поэтому импорт выполняется **в два этапа**:
-
-1. загрузка JSON целиком во временную (промежуточную) таблицу;
-2. распаковка JSON и перенос данных в рабочую таблицу `counterparty`.
-
----
-
-### 4.1. Создание промежуточной таблицы `counterparty_import`
-
-1. В дереве pgAdmin откройте:
-
-      **Schemas → app → Tables → Create → Table…**
-
-2. Укажите параметры таблицы:
-
-      * **Name:** `counterparty_import`
-      * **Schema:** `app`
-
-3. Перейдите на вкладку **Columns** и создайте колонку:
-
-      * **Name:** `payload`
-      * **Data type:** `jsonb`
-      * **Not null:** ✔ (включено)
-
-4. Сохраните таблицу (**Save**).
-
-> Назначение таблицы `counterparty_import` — временно хранить **исходный JSON целиком**, без разборки по полям.
-
----
-
-### 4.2. Загрузка содержимого файла `Заказчики.json` в таблицу
-
-1. Откройте **Query Tool**:
-
-     * правый клик по базе данных или схеме `app` → **Query Tool**
-
-2. Откройте файл `Заказчики.json` в любом текстовом редакторе
-   (например, Notepad++, VS Code).
-
-3. **Выделите и скопируйте весь файл целиком**, включая:
-
-      * квадратные скобки `[` `]`,
-      * все объекты,
-      * все запятые и кавычки.
-
-4. В Query Tool выполните запрос вставки:
+`chk_item_type`. Допускает две категории номенклатуры.
 
 ```sql
-INSERT INTO app.counterparty_import ("payload ")
-VALUES (
-$$ '<вставьте содержимое JSON целиком>'$$::jsonb
-);
+item_type IN ('product','material')
 ```
 
-Текст из Заказчики.json вставляем вместо: <вставьте содержимое JSON целиком>
+## Создайте таблицу price
 
-5. Убедитесь, что запрос выполнился без ошибок
-   (сообщение `INSERT 0 1` или аналогичное).
+Цена относится к позиции справочника. Запись с пустыми датами используется для прайс-листа, в котором срок действия не указан.
 
-6. При необходимости проверьте, что данные загружены:
+| Поле | Тип | Обязательное | Default |
+|---|---|---|---|
+| `id` | `bigserial` | PK | — |
+| `item_id` | `bigint` | Да | — |
+| `price` | `numeric(12,2)` | Да | — |
+| `effective_from` | `date` | Нет | — |
+| `effective_to` | `date` | Нет | — |
+
+
+
+
+Внешние ключи добавьте после создания всех таблиц. Для **On update** используйте **CASCADE**.
+
+| Поле | Ссылка | On delete |
+|---|---|---|
+| `item_id` | `app.item.id` | RESTRICT |
+
+Для шага добавления ограничений используйте вкладку **Check**. Заполняйте поле **Check** для каждой проверки.
+
+`chk_price_nonnegative`. Цена может быть нулевой или положительной.
 
 ```sql
-SELECT payload
-FROM app.counterparty_import;
+price >= 0
 ```
 
-> На этом этапе **в таблице одна строка**, а в поле `payload` хранится **весь JSON-массив**.
-
----
-
-### 4.3. Распаковка JSON и перенос данных в таблицу `counterparty`
-
-Файл `Заказчики.json`, как правило, содержит **массив объектов**, например:
-
-```json
-[
-  {
-    "id": "C001",
-    "name": "ООО Ромашка",
-    "inn": "7701234567",
-    "address": "г. Москва",
-    "phone": "+7..."
-  },
-  ...
-]
-```
-
-Чтобы превратить каждый объект массива в отдельную строку таблицы `counterparty`, используется функция `jsonb_array_elements`.
-
-1. В **Query Tool** выполните запрос распаковки:
+`chk_price_dates`. При наличии обеих дат окончание не раньше начала.
 
 ```sql
-INSERT INTO app.counterparty (
-    id,
-    name,
-    inn,
-    address,
-    phone,
-    is_salesman,
-    is_buyer
-)
-SELECT
-    e->>'id'        AS id,
-    e->>'name'      AS name,
-    NULLIF(e->>'inn', '') AS inn,
-    NULLIF(
-        COALESCE(e->>'addres', e->>'address'),
-        ''
-    )               AS address,
-    NULLIF(e->>'phone', '') AS phone,
-    COALESCE((e->>'salesman')::BOOLEAN, FALSE) AS is_salesman,
-    COALESCE((e->>'buyer')::BOOLEAN, FALSE)    AS is_buyer
-FROM (
-    SELECT jsonb_array_elements(payload) AS e
-    FROM app.counterparty_import
-) t;
+effective_to IS NULL OR effective_from IS NULL OR effective_to >= effective_from
 ```
 
-2. Назначение основных операций:
+## Создайте таблицу specification
 
-      * `jsonb_array_elements(payload)` — разбивает JSON-массив на отдельные элементы;
-      * `e->>'field'` — извлекает значение поля как текст;
-      * `NULLIF(..., '')` — заменяет пустые строки на `NULL`;
-      * `COALESCE(...)` — подставляет значение по умолчанию, если поле отсутствует;
-      * приведение `::BOOLEAN` — корректно обрабатывает логические значения.
+Шапка нормы производства. Укажите продукт, количество выпуска и единицу измерения.
 
----
+| Поле | Тип | Обязательное | Default |
+|---|---|---|---|
+| `id` | `bigserial` | PK | — |
+| `name` | `text` | Да | — |
+| `product_item_id` | `bigint` | Да | — |
+| `output_qty` | `numeric(12,3)` | Да | `1` |
+| `output_unit` | `text` | Нет | — |
+| `manufacturer_id` | `text` | Нет | — |
 
-### 4.4. Проверка результата импорта
 
-1. Убедитесь, что строки появились в основной таблице:
+
+
+Внешние ключи добавьте после создания всех таблиц. Для **On update** используйте **CASCADE**.
+
+| Поле | Ссылка | On delete |
+|---|---|---|
+| `manufacturer_id` | `app.counterparty.id` | RESTRICT |
+| `product_item_id` | `app.item.id` | RESTRICT |
+
+Для шага добавления ограничений используйте вкладку **Check**. Заполняйте поле **Check** для каждой проверки.
+
+`chk_specification_output`. Количество выпуска положительное.
 
 ```sql
-SELECT COUNT(*) 
-FROM app.counterparty;
+output_qty > 0
 ```
 
-2. Просмотрите несколько записей:
+## Создайте таблицу specification_material
+
+Строка спецификации хранит один материал, норму расхода и единицу измерения. Одна и та же пара спецификации и материала встречается только один раз.
+
+| Поле | Тип | Обязательное | Default |
+|---|---|---|---|
+| `id` | `bigserial` | PK | — |
+| `specification_id` | `bigint` | Да | — |
+| `material_item_id` | `bigint` | Да | — |
+| `qty` | `numeric(12,3)` | Да | — |
+| `unit` | `text` | Нет | — |
+
+
+
+
+Внешние ключи добавьте после создания всех таблиц. Для **On update** используйте **CASCADE**.
+
+| Поле | Ссылка | On delete |
+|---|---|---|
+| `material_item_id` | `app.item.id` | RESTRICT |
+| `specification_id` | `app.specification.id` | CASCADE |
+
+Для шага добавления ограничений подготовьте **Unique** `uq_specification_material` на два поля в порядке `specification_id`, `material_item_id`.
+
+Для шага добавления ограничений используйте вкладку **Check**. Заполняйте поле **Check** для каждой проверки.
+
+`chk_specification_material_qty`. Норма расхода указана положительным числом.
 
 ```sql
-SELECT *
-FROM app.counterparty
-ORDER BY id
-LIMIT 10;
+qty > 0
 ```
 
-3. Также можно проверить данные через интерфейс pgAdmin:
+## Создайте таблицу production_order
 
-   * правый клик по таблице `counterparty`
-   * **View/Edit Data → All Rows**
+Шапка производственного документа. Поля реквизитов отделены от выпущенной продукции и списанных материалов.
 
----
+| Поле | Тип | Обязательное | Default |
+|---|---|---|---|
+| `id` | `bigserial` | PK | — |
+| `doc_no` | `text` | Да | — |
+| `doc_date` | `date` | Нет | — |
+| `manufacturer_id` | `text` | Нет | — |
+| `note` | `text` | Нет | — |
 
-### 4.5. Очистка промежуточной таблицы (по желанию)
 
-После успешного импорта промежуточная таблица может быть:
 
-* очищена:
+
+Внешние ключи добавьте после создания всех таблиц. Для **On update** используйте **CASCADE**.
+
+| Поле | Ссылка | On delete |
+|---|---|---|
+| `manufacturer_id` | `app.counterparty.id` | RESTRICT |
+
+## Создайте таблицу production_product_line
+
+Строка выпуска хранит продукт и количество, а внешний ключ связывает её с производственным документом.
+
+| Поле | Тип | Обязательное | Default |
+|---|---|---|---|
+| `id` | `bigserial` | PK | — |
+| `production_order_id` | `bigint` | Да | — |
+| `product_item_id` | `bigint` | Да | — |
+| `qty` | `numeric(12,3)` | Да | — |
+| `unit` | `text` | Нет | — |
+
+
+
+
+Внешние ключи добавьте после создания всех таблиц. Для **On update** используйте **CASCADE**.
+
+| Поле | Ссылка | On delete |
+|---|---|---|
+| `product_item_id` | `app.item.id` | RESTRICT |
+| `production_order_id` | `app.production_order.id` | CASCADE |
+
+Для шага добавления ограничений используйте вкладку **Check**. Заполняйте поле **Check** для каждой проверки.
+
+`chk_production_product_qty`. Количество выпущенной продукции положительное.
 
 ```sql
-TRUNCATE TABLE app.counterparty_import;
+qty > 0
 ```
 
-* или оставлена для повторных импортов / отладки.
+## Создайте таблицу production_material_line
 
----
+Строка списания хранит материал и количество, а внешний ключ связывает её с производственным документом.
 
-### 4.6. Примечание
+| Поле | Тип | Обязательное | Default |
+|---|---|---|---|
+| `id` | `bigserial` | PK | — |
+| `production_order_id` | `bigint` | Да | — |
+| `material_item_id` | `bigint` | Да | — |
+| `qty` | `numeric(12,3)` | Да | — |
+| `unit` | `text` | Нет | — |
 
-> Если файл `Заказчики.json` **очень большой**, рекомендуется использовать загрузку через `psql \copy`, так как она работает быстрее и надёжнее.
-> Однако в рамках данного документа **рассмотрен только вариант через интерфейс pgAdmin и Query Tool**, без использования командной строки.
 
----
 
-### 4.7. Практически без кода: импорт через CSV
 
-*(pgAdmin Import/Export)*
+Внешние ключи добавьте после создания всех таблиц. Для **On update** используйте **CASCADE**.
 
-pgAdmin поддерживает импорт данных **из CSV-файлов через графический интерфейс**, но **не поддерживает прямой импорт JSON**.
-Поэтому наиболее простой и «безкодовочный» способ — **предварительно конвертировать JSON в CSV** и выполнить импорт стандартными средствами pgAdmin.
+| Поле | Ссылка | On delete |
+|---|---|---|
+| `material_item_id` | `app.item.id` | RESTRICT |
+| `production_order_id` | `app.production_order.id` | CASCADE |
 
-#### Шаги выполнения
+Для шага добавления ограничений используйте вкладку **Check**. Заполняйте поле **Check** для каждой проверки.
 
-1. Конвертируйте файл `Заказчики.json` в формат `Заказчики.csv`.
-
-   Допускается использование:
-
-   * Microsoft Excel (через Power Query);
-   * LibreOffice Calc;
-   * любого локального инструмента конвертации.
-
-   В CSV-файле каждая строка должна соответствовать **одному заказчику**, а названия столбцов — полям таблицы `counterparty`.
-
-2. В pgAdmin выполните импорт:
-
-   * правый клик по таблице **`app.counterparty`**;
-   * выберите **Import/Export Data…**;
-   * вкладка **Import**;
-   * укажите путь к файлу `Заказчики.csv`;
-   * установите флаг **Header** (если первая строка содержит заголовки);
-   * проверьте кодировку (обычно `UTF-8`);
-   * при необходимости настройте разделитель (`;` или `,`);
-   * подтвердите импорт (**OK**).
-
-3. После завершения импорта проверьте результат:
+`chk_production_material_qty`. Количество списанного материала положительное.
 
 ```sql
-SELECT COUNT(*)
-FROM app.counterparty;
+qty > 0
 ```
 
-#### Преимущества способа
+## Создайте таблицу customer_order
 
-* минимальное использование SQL (фактически отсутствует);
-* полностью графический интерфейс;
-* устойчиво работает с большими объёмами данных.
+Шапка заказа покупателя содержит реквизиты, исполнителя, заказчика и сумму документа.
 
-#### Недостаток
+| Поле | Тип | Обязательное | Default |
+|---|---|---|---|
+| `id` | `bigserial` | PK | — |
+| `doc_no` | `text` | Да | — |
+| `doc_date` | `date` | Нет | — |
+| `executor_id` | `text` | Нет | — |
+| `customer_id` | `text` | Нет | — |
+| `total_amount` | `numeric(12,2)` | Нет | — |
 
-* требуется предварительная конвертация файла JSON в CSV.
 
----
 
-### 4.8. Минимум кода, но корректный импорт файла: PSQL Tool (`\copy`)
 
-Данный способ сочетает **надёжность** и **минимальный объём команд**, но выполняется **через встроенный PSQL Tool pgAdmin**, а не через Query Tool.
+Внешние ключи добавьте после создания всех таблиц. Для **On update** используйте **CASCADE**.
 
-#### Шаги выполнения
+| Поле | Ссылка | On delete |
+|---|---|---|
+| `customer_id` | `app.counterparty.id` | RESTRICT |
+| `executor_id` | `app.counterparty.id` | RESTRICT |
 
-1. В pgAdmin откройте меню **Tools → PSQL Tool**.
-2. В открывшемся терминале выполните команду:
+Для шага добавления ограничений используйте вкладку **Check**. Заполняйте поле **Check** для каждой проверки.
+
+`chk_order_total`. Внесённая сумма заказа неотрицательная.
 
 ```sql
-\copy app.counterparty_import(payloadjsonb)
-FROM 'C:/path/to/Заказчики.json'
-WITH (FORMAT text);
+total_amount >= 0
 ```
 
-> Путь к файлу указывается **на стороне клиента**, то есть на компьютере, где запущен pgAdmin.
+## Создайте таблицу customer_order_line
 
-3. После успешной загрузки выполните **распаковку JSON** в таблицу `counterparty`
-   (используется запрос из пункта **4.3**).
+Строка заказа хранит продукт, количество и цену сделки. Справочный прайс хранится отдельно.
 
-#### Преимущества способа
-
-* самый надёжный вариант для файлов JSON;
-* корректно работает с большими файлами;
-* минимальное количество SQL-кода.
-
-#### Ограничение
-
-* используется командный режим (`psql`), что может быть запрещено или ограничено в некоторых учебных средах.
-
----
-
-## 5. Проверка своей базы данных
-
-Для проверки свой БД после создания таблиц создайте ER-диагамму средствами Postgress для сравнения, что вы ничего не забыли. 
-
-### 5.1. Выбрать БД
-
-Нажимите на своей БД правой клавишей мыши. 
-
-   ![Проверка своей базы данных](../assets/images/11.png)
-
-   /// caption
-   Рисунок 10 – Проверка своей базы данных
-   ///
-
-### 5.2. Создание ER-диаграммы
+| Поле | Тип | Обязательное | Default |
+|---|---|---|---|
+| `id` | `bigserial` | PK | — |
+| `customer_order_id` | `bigint` | Да | — |
+| `product_item_id` | `bigint` | Да | — |
+| `qty` | `numeric(12,3)` | Да | — |
+| `unit` | `text` | Нет | — |
+| `unit_price` | `numeric(12,2)` | Нет | — |
+| `line_amount` | `numeric(12,2)` | Нет | — |
 
 
-   ![Создание ER-диаграммы](../assets/images/12.png)
 
-   /// caption
-   Рисунок 11 – Создание ER-диаграммы
-   ///
 
-### 5.3. Сохранение диаграммы
+![Числовые поля и точность в строке заказа](../../assets/images/preparation/postgres-m2-order-line.png)
 
-Диаграмму можно сохранить рядом с вашим ER, которые вы создали в начале экзамена с именем expodt_db.
+Внешние ключи добавьте после создания всех таблиц. Для **On update** используйте **CASCADE**.
 
-   ![Создание ER-диаграммы](../assets/files/test.pgerd.png)
+| Поле | Ссылка | On delete |
+|---|---|---|
+| `customer_order_id` | `app.customer_order.id` | CASCADE |
+| `product_item_id` | `app.item.id` | RESTRICT |
 
-   /// caption
-   Рисунок 12 – Пример сохраненной диаграммы
-   ///
+Для шага добавления ограничений используйте вкладку **Check**. Заполняйте поле **Check** для каждой проверки.
 
-## 6. Скачать пример готовой базы данных
+`chk_customer_line_qty`. Количество товара положительное.
 
-- `dairy_demo.sql`
+```sql
+qty > 0
+```
 
-[Скачать текстовый SQL-дамп](../assets/files/dairy_demo.sql)
+`chk_customer_line_unit_price`. Внесённая цена за единицу неотрицательная.
 
-В pgAdmin создайте отдельную пустую базу. Выберите её в дереве, откройте **Query Tool** → **Open File**, выберите скачанный файл и нажмите **Execute**. В схеме `app` появятся таблицы и данные, в `app.counterparty` — шесть контрагентов.
- 
+```sql
+unit_price >= 0
+```
+
+`chk_customer_line_amount`. Внесённая сумма строки неотрицательная.
+
+```sql
+line_amount >= 0
+```
+
+## Создайте таблицу cost_calculation
+
+Шапка расчёта себестоимости содержит продукт, объём расчёта и итог.
+
+| Поле | Тип | Обязательное | Default |
+|---|---|---|---|
+| `id` | `bigserial` | PK | — |
+| `calc_date` | `date` | Нет | — |
+| `product_item_id` | `bigint` | Да | — |
+| `product_qty` | `numeric(12,3)` | Да | `1` |
+| `total_cost` | `numeric(12,2)` | Нет | — |
+
+
+
+
+Внешние ключи добавьте после создания всех таблиц. Для **On update** используйте **CASCADE**.
+
+| Поле | Ссылка | On delete |
+|---|---|---|
+| `product_item_id` | `app.item.id` | RESTRICT |
+
+Для шага добавления ограничений используйте вкладку **Check**. Заполняйте поле **Check** для каждой проверки.
+
+`chk_calculation_qty`. Количество рассчитываемого продукта положительное.
+
+```sql
+product_qty > 0
+```
+
+`chk_calculation_total`. Внесённый итог калькуляции неотрицательный.
+
+```sql
+total_cost >= 0
+```
+
+## Создайте таблицу cost_calculation_line
+
+Строка калькуляции хранит материал, норму и значения цены и стоимости именно из документа расчёта.
+
+| Поле | Тип | Обязательное | Default |
+|---|---|---|---|
+| `id` | `bigserial` | PK | — |
+| `cost_calculation_id` | `bigint` | Да | — |
+| `material_item_id` | `bigint` | Да | — |
+| `qty` | `numeric(12,3)` | Да | — |
+| `unit` | `text` | Нет | — |
+| `unit_cost` | `numeric(12,2)` | Нет | — |
+| `line_cost` | `numeric(12,2)` | Нет | — |
+
+
+
+
+Внешние ключи добавьте после создания всех таблиц. Для **On update** используйте **CASCADE**.
+
+| Поле | Ссылка | On delete |
+|---|---|---|
+| `cost_calculation_id` | `app.cost_calculation.id` | CASCADE |
+| `material_item_id` | `app.item.id` | RESTRICT |
+
+Для шага добавления ограничений используйте вкладку **Check**. Заполняйте поле **Check** для каждой проверки.
+
+`chk_calculation_line_qty`. Количество материала положительное.
+
+```sql
+qty > 0
+```
+
+`chk_calculation_line_unit_cost`. Внесённая цена материала неотрицательная.
+
+```sql
+unit_cost >= 0
+```
+
+`chk_calculation_line_cost`. Внесённая стоимость строки неотрицательная.
+
+```sql
+line_cost >= 0
+```
+
+## Добавьте связи и ограничения через свойства
+
+Щёлкните правой кнопкой по дочерней таблице → **Properties… → Constraints → Foreign Key**. Нажмите **+**. В **General → Name** задайте понятное имя, например `fk_price_item`. Если вложенные вкладки свернулись, нажмите карандаш в строке ограничения.
+
+На вложенной вкладке **Columns** выберите **Local column = item_id**, **References = app.item**, **Referencing = id**. Нажмите **Add**, чтобы строка появилась в списке соответствий. Во вложенной вкладке **Action** укажите **On update = CASCADE** и **On delete** из карточки таблицы. Нажмите **Save**. Повторите для каждого ссылающегося поля.
+
+![Сопоставление price.item_id с app.item.id в конструкторе](../../assets/images/preparation/postgres-m2-fk-columns.png)
+
+![Действия при изменении и удалении связанной строки](../../assets/images/preparation/postgres-m2-fk-action.png)
+
+Для проверок используйте **Properties… → Constraints → Check → +**. В строке заполните **Name** и поле **Check**, вставив в него выражение из карточки таблицы. Сохраните и проверьте имя в дереве **Constraints**.
+
+![Проверка допустимых значений item_type](../../assets/images/preparation/postgres-m2-check.png)
+
+Для уникальности выберите **Constraints → Unique → +**. Во вложенной вкладке **General** задайте имя, во вкладке **Definition → Columns** выберите нужные поля. Для ограничения на пару добавьте оба поля в одну строку настройки. Нажмите **Save**.
+
+![Уникальность пары полей в specification_material](../../assets/images/preparation/postgres-m2-unique.png)
+
+При удалении шапки документа **CASCADE** удаляет строки этого документа. Для справочников **RESTRICT** защищает существующие документы от потери ссылок. Ссылка может быть пустой только там, где в карточке поля разрешён `NULL`.
+
+## Преобразуйте «Заказчики.json» в таблицу Excel
+
+В Excel создайте пустую книгу и откройте **Данные → Получить данные → Из файла → Из JSON**. Выберите исходный `Заказчики.json` из приложения к КОД. В редакторе Power Query появится список из шести элементов **Record**.
+
+1. Нажмите **В таблицу** и подтвердите параметры без разделителя.
+2. В заголовке **Column1** нажмите кнопку раскрытия с двумя стрелками. Отметьте все семь полей и снимите флажок **Использовать исходное имя столбца как префикс**. Нажмите **ОК**.
+3. Проверьте, что есть `id`, `name`, `inn`, `addres`, `phone`, `salesman`, `buyer`. В первой строке идентификатор должен отображаться как `000000001`.
+4. Нажмите **Закрыть и загрузить**. На листе измените заголовки `addres` на `address`, `salesman` на `is_salesman`, `buyer` на `is_buyer`. Сохраните последовательность семи столбцов.
+5. В последних двух столбцах замените по шести логических значений. Для **ИСТИНА** введите `1`, для **ЛОЖЬ** — `0`. PostgreSQL принимает эти цифры как логические значения. Проверьте первую и последнюю строки по оригиналу.
+
+![Исходные поля «Заказчики.json» после раскрытия в Power Query](../../assets/images/preparation/m2-power-query-columns.png)
+
+## Сохраните CSV в UTF-8
+
+На листе с данными нажмите **F12**, выберите **CSV UTF-8 (разделитель — запятая)** и сохраните `Заказчики-PostgreSQL.csv`. Если Excel предложит сохранить только текущий лист, подтвердите. После сохранения закройте книгу с CSV.
+
+Откройте CSV в Блокноте. Проверьте строку заголовков, шесть записей и фактический разделитель столбцов. В русских настройках Excel это может быть `;`. Оставьте строку заголовков в файле. Сверьте, что первые нули у `id` и знак `+` у телефона сохранились.
+
+## Импортируйте контрагентов в pgAdmin
+
+В дереве **dairy_demo → Schemas → app → Tables** щёлкните правой кнопкой по **counterparty → Import/Export Data…**.
+
+1. На вкладке **General** выберите **Import**, в **Filename** — подготовленный CSV, **Format = csv**, **Encoding = UTF8**.
+2. На вкладке **Options** включите **Header**. В **Delimiter** выберите фактический знак из файла, например `;`. В **Quote** и **Escape** выберите двойную кавычку `"`. Excel удваивает этот знак внутри названий компаний.
+3. Оставьте **NULL String** пустым. Пустая ячейка ИНН из CSV будет сохранена как `NULL`.
+4. На вкладке **Columns** сверьте последовательность `id`, `name`, `inn`, `address`, `phone`, `is_salesman`, `is_buyer`. Нажмите **OK**.
+5. После сообщения **Process completed** откройте **counterparty → View/Edit Data → All Rows**. Под таблицей должно стоять **Total rows: 6**. Сверьте название, адрес, телефон и оба признака у одной записи и проверьте, что нули у идентификаторов остались.
+
+![Заголовок, разделитель и кавычки в окне импорта](../../assets/images/preparation/postgres-m2-import-options.png)
+
+![Шесть строк после импорта в app.counterparty](../../assets/images/preparation/postgres-m2-import-result.png)
+
+## Выгрузите и восстановите свою базу
+
+Щёлкните правой кнопкой по **dairy_demo → Backup…**. На вкладке **General** выберите имя `dairy_demo.sql` в своей рабочей папке и **Format = Plain**. На вкладке **Data Options** оставьте **Only data** и **Only schemas** выключенными. В группе **Do not save** включите **Owner** и **Privileges**, чтобы перенести структуру и данные под другой локальной ролью. Нажмите **Backup**. Дождитесь завершения процесса и убедитесь, что SQL-файл появился.
+
+![Data Options для переноса структуры и данных](../../assets/images/preparation/postgres-m2-backup-options.png)
+
+Для проверки через **Databases → Create → Database…** создайте отдельную пустую базу `dairy_demo_pg_check`. Щёлкните по ней правой кнопкой → **Restore…**, укажите **Format = Plain** и сохранённый SQL-файл. Нажмите **Restore** и дождитесь завершения. Раскройте **Schemas → app → Tables**. В копии должно быть 12 таблиц. Откройте `counterparty` через **View/Edit Data → All Rows** и проверьте все шесть записей. В следующих заданиях продолжайте работать в `dairy_demo`.

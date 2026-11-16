@@ -1,329 +1,222 @@
-# Модуль 3. Создание запроса 
+# Задание 3. Наполнение базы и запрос стоимости в PostgreSQL
 
-## Выберите исходные данные
+## Откройте базу из задания 2
 
-- **Готовая база.** Загрузите [дамп М2](../assets/files/dairy_demo.sql) в отдельную пустую базу. Перейдите к разделу 9. В дампе есть три заказа для самопроверки. Блоки INSERT из разделов 2–7 предназначены для ручного варианта.
-- **Ручная подготовка.** В отдельной базе создайте схему по М2 и импортируйте контрагентов. Затем внесите тестовые строки разделов 2–7. В этом варианте создаётся заказ № 1. Его контрольная сумма — **371,00**.
+В pgAdmin выберите `dairy_demo`. В таблице `counterparty` должны быть шесть записей из JSON. Возьмите исходные книги из задания 1. Заказ, прайс и калькуляция описывают разные величины.
 
-## 1. Подготовка тестовых данных (наполнение БД для расчёта стоимости заказа)
+- [Заказ покупателя.xlsx](../../postgresql/assets/files/Заказ%20покупателя.xlsx) содержит заказ № 2 и цены продажи на момент заказа.
+- [Цены.xlsx](../../postgresql/assets/files/Цены.xlsx) содержит цены без дат действия.
+- [Спецификация.xlsx](../../postgresql/assets/files/Спецификация.xlsx) содержит нормы выпуска и расхода для сметаны.
+- [Производство.xlsx](../../postgresql/assets/files/Производство.xlsx) содержит выпуск, расход и коды номенклатуры.
+- [Расчет стоимости продукции.xlsx](../../postgresql/assets/files/Расчет%20стоимости%20продукции.xlsx) содержит отдельную калькуляцию сметаны и цены, использованные в ней.
 
-Чтобы запрос расчёта полной стоимости заказа работал, необходимо заполнить:
+Для заполнения откройте **dairy_demo → Schemas → app → Tables**. У нужной таблицы выберите **View/Edit Data → All Rows**. Над сеткой **Data Output** нажмите **Add row**. Строка с номером и знаком `+` ожидает сохранения.
 
-1. номенклатуру продукции и материалов (`app.item`);
-2. спецификации продукции (`app.specification`);
-3. материалы в спецификациях (`app.specification_material`);
-4. цены на материалы (`app.price`);
-5. заказ покупателя (`app.customer_order`) и строки заказа (`app.customer_order_line`).
+Дважды щёлкните по ячейке. В текстовом редакторе подтвердите ввод кнопкой **OK**, в числовой ячейке нажмите **Enter**. Для дат используйте `ГГГГ-ММ-ДД`, для дробных значений — точку. Оставляйте `[default]` у автоматически назначаемого `id`. Для отсутствующего в источнике необязательного поля сохраните `[null]`.
 
----
+Когда заполните строки, нажмите **Save Data Changes** над сеткой. Дождитесь сообщения **Data saved successfully**. Перед заполнением ссылок нажмите **Execute script**, чтобы сетка обновилась и показала назначенные `id`. Записывайте номера по названиям и реквизитам источников.
 
-## 2. Наполнение таблицы `app.item` (продукция и материалы)
+## Добавьте комбинат в counterparty
 
-### 2.1. Добавьте материалы
+Найдите ООО «Ассоль» с `id = 000000010` из задания 2. Из шапки заказа перенесите наименование исполнителя `ООО Молочный комбинат "Полесье"`. Для его строки нужен локальный ключ, используйте `polese`. В открытом редакторе логической ячейки `is_salesman` переключите значение до `true`. Оставьте **NULL** в `inn`, `address` и `phone`, поскольку этих сведений в исходном документе нет. Сохраните строку.
+
+## Внесите материалы в item
+
+В сетке `app.item` введите две строки. Для обеих строк из документа «Производство» укажите `item_type = material` и `unit_default = кг`.
+
+| name | code |
+|---|---|
+| Молоко нормализованное | НФ-00000004 |
+| Закваска сметанная | НФ-00000005 |
+
+![Материалы и продукция в сетке app.item до сохранения](../../assets/images/preparation/postgres-m3-item.png)
+
+## Внесите продукцию в item
+
+В той же таблице добавьте продукцию из заказа, производства и прайса с `item_type = product`. В строках без кода или единицы в исходниках сохраните `NULL`.
+
+| name | code | unit_default |
+|---|---|---|
+| Кефир 2,5% 900г. | NULL | шт |
+| Кефир 3,2% 900г. | NULL | шт |
+| Молоко 2,5% 900г. | NULL | шт |
+| Сметана классическая 15% 540г. | НФ-00000006 | шт |
+| Молоко 3,2% 900г. | NULL | NULL |
+| Сметана классическая 20% 540г. | NULL | NULL |
+
+После сохранения нажмите **Execute script**. В **Data Output** должно быть восемь позиций, в том числе два материала. Используйте их номера в полях типа `item_id`.
+
+## Внесите цены
+
+В `price` для каждой строки укажите `item_id` из `item` и значение `price` из «Цены.xlsx». В строках прайса нет дат. Оставьте `effective_from` и `effective_to` со значением `NULL`.
+
+| Позиция | price |
+|---|---:|
+| Закваска сметанная | 45 |
+| Кефир 2,5% 900г. | 80 |
+| Кефир 3,2% 900г. | 82 |
+| Молоко 2,5% 900г. | 70 |
+| Молоко 3,2% 900г. | 76 |
+| Молоко нормализованное | 34 |
+| Сметана классическая 15% 540г. | 89 |
+| Сметана классическая 20% 540г. | 92 |
+
+![Цены из прайса в сетке app.price](../../assets/images/preparation/postgres-m3-price.png)
+
+## Внесите спецификацию в specification
+
+Добавьте `Основная Сметана 15%`. В `product_item_id` выберите сметану 15%, в `manufacturer_id` — комбинат «Полесье». Укажите `output_qty = 1.000` и `output_unit = шт`. Количество выпуска нужно для перевода расхода всей партии в расход на одну единицу.
+
+![Поля спецификации сметаны в pgAdmin](../../assets/images/preparation/postgres-m3-specification.png)
+
+## Внесите нормы в specification_material
+
+Откройте сетку `app.specification_material` и нажмите **Add row**. В обеих строках укажите `specification_id` созданной спецификации. В `material_item_id` выберите соответственно молоко нормализованное и закваску сметанную. Введите `qty = 0.900` и `0.070`, `unit = кг` для обеих строк. Сверьте нормы с «Спецификация.xlsx».
+
+## Перенесите документ производства
+
+В `production_order` добавьте документ `doc_no = 1` от `2025-06-09` и выберите комбинат «Полесье» в `manufacturer_id`. Найдите номер строки `id` в обновлённой сетке.
+
+В `production_product_line` добавьте выпуск сметаны 15% (`product_item_id`, `qty = 1.000`, `unit = шт`). В `production_material_line` добавьте молоко нормализованное (`qty = 0.900`) и закваску сметанную (`qty = 0.070`) в килограммах. Для всех трёх строк используйте `production_order_id` этой шапки. Эти данные описывают фактический выпуск и расход.
+
+## Внесите заказ № 2 в customer_order
+
+В сетку `app.customer_order` перенесите `doc_no = 2`, `doc_date = 2025-06-06` и `total_amount = 2488.00`. Введите `executor_id = polese`, `customer_id = 000000010`. Сохраните через **Save Data Changes**. В обновлённой сетке запишите назначенный `id`.
+
+![Реквизиты заказа № 2 в сетке app.customer_order](../../assets/images/preparation/postgres-m3-order.png)
+
+## Внесите позиции в customer_order_line
+
+Добавьте три строки с одним `customer_order_id`. В `product_item_id` выбирайте соответствующий товар из `item`. Во всех строках `unit = шт`.
+
+| Продукция | qty | unit_price | line_amount |
+|---|---:|---:|---:|
+| Кефир 2,5% 900г. | 12 | 80.00 | 960.00 |
+| Кефир 3,2% 900г. | 9 | 82.00 | 738.00 |
+| Молоко 2,5% 900г. | 10 | 79.00 | 790.00 |
+
+Цена молока в самом заказе — 79.00. В отдельном прайсе — 70.00. Сохраните каждое значение в его таблице, чтобы цена в заказе оставалась такой, как в документе.
+
+## Сохраните контрольную калькуляцию
+
+В `cost_calculation` добавьте строку со ссылкой на сметану 15%, `product_qty = 1.000`, `total_cost = 36.70` и `calc_date = NULL`. Сверьте с книгой «Расчет стоимости продукции».
+
+В `cost_calculation_line` добавьте две строки с `cost_calculation_id` из обновлённой сетки и `material_item_id` каждого материала.
+
+| Материал | qty | unit | unit_cost | line_cost |
+|---|---:|---|---:|---:|
+| Молоко нормализованное | 0.900 | кг | 40.00 | 36.00 |
+| Закваска сметанная | 0.070 | кг | 10.00 | 0.70 |
+
+Эти цены относятся к контрольной калькуляции. Прайс хранится отдельно в `price`.
+
+## Проверьте формулу на калькуляции сметаны
+
+Выберите базу `dairy_demo` и откройте **Tools → Query Tool**. Вставьте запрос в **Query** и нажмите **Execute script** или **F5**. Имена после `app.` указывают на таблицы схемы, созданной в задании 2. Сложите стоимость материалов, затем разделите на количество выпущенных единиц. `NULLIF` защищает от деления на ноль. Округление до копеек применяется к результату.
 
 ```sql
-INSERT INTO app.item (id, code, name, item_type, unit_default)
-VALUES
-(1001, 'MAT-001', 'Молоко 3.2%', 'material', 'л'),
-(1002, 'MAT-002', 'Сахар',      'material', 'кг'),
-(1003, 'MAT-003', 'Какао',      'material', 'кг');
+SELECT product.name AS product,
+       ROUND(SUM(line.qty * line.unit_cost) / NULLIF(calc.product_qty, 0), 2) AS material_cost_per_unit,
+       calc.total_cost AS document_total
+FROM app.cost_calculation AS calc
+JOIN app.item AS product ON product.id = calc.product_item_id
+JOIN app.cost_calculation_line AS line ON line.cost_calculation_id = calc.id
+GROUP BY calc.id, product.name, calc.product_qty, calc.total_cost;
 ```
 
-### 2.2. Добавьте продукцию
+Ручная сверка для одной упаковки сметаны даёт `(0.900 × 40 + 0.070 × 10) / 1 = 36.70` ₽. В запросе `material_cost_per_unit` и `document_total` должны совпасть.
+
+![Проверка формулы возвращает 36.70 в обеих колонках](../../assets/images/preparation/postgres-m3-cost-check.png)
+
+## Проверьте исходные строки заказа
+
+Сначала выполните простую выборку. Именно эти позиции должны остаться в итоговой таблице после добавления норм, в том числе если для позиции отсутствует спецификация.
 
 ```sql
-INSERT INTO app.item (id, code, name, item_type, unit_default)
-VALUES
-(2001, 'PRD-001', 'Йогурт клубничный', 'product', 'шт'),
-(2002, 'PRD-002', 'Какао напиток',     'product', 'шт');
+SELECT o.doc_no, o.doc_date, product.name, l.qty, l.line_amount
+FROM app.customer_order AS o
+JOIN app.customer_order_line AS l ON l.customer_order_id = o.id
+JOIN app.item AS product ON product.id = l.product_item_id
+WHERE o.doc_no = '2' AND o.doc_date = DATE '2025-06-06'
+ORDER BY l.id;
 ```
 
----
+Запись `DATE '2025-06-06'` задаёт значение типа `date`. У заказа три позиции. Сумма `960 + 738 + 790 = 2 488` ₽ показывает выручку по документу. Для себестоимости понадобятся нормы и цены материалов.
 
-## 3. Наполнение таблицы `app.specification` (спецификации продукции)
+![Три исходные строки заказа № 2](../../assets/images/preparation/postgres-m3-original-order.png)
 
-В примере используется `output_qty = 1`, чтобы нормы расхода считались максимально просто (на 1 единицу продукции).
+## Итог по заказу
 
-```sql
-INSERT INTO app.specification (id, name, product_item_id, output_qty, output_unit, manufacturer_id)
-VALUES
-(1, 'Спецификация: Йогурт клубничный', 2001, 1, 'шт', NULL),
-(2, 'Спецификация: Какао напиток',     2002, 1, 'шт', NULL);
-```
-
----
-
-## 4. Наполнение таблицы `app.specification_material` (нормы расхода материалов)
-
-### 4.1. Материалы для йогурта (product_item_id = 2001)
-
-* Молоко: 0.25 л на 1 шт
-* Сахар: 0.03 кг на 1 шт
+1. В `spec_candidates` посчитайте спецификации каждого товара. Если спецификация одна, используйте её `id`. Если их несколько, потребуется уточнить, какая действовала для заказа.
+2. В `components` сохраните все позиции заказа с помощью `LEFT JOIN`. Для каждого материала выберите одну цену. Сначала ищите датированную цену, действовавшую на день заказа. Если её нет, используйте недатированную цену из приложенного прайса. При совпадении даты выберите строку с большим `id`, чтобы не посчитать один материал дважды.
+3. В `line_check` сгруппируйте материалы позиции. Если у каждого компонента есть цена и указано количество выпуска, полученную стоимость партии разделите на выпуск. Сохраните причину, если расчёт невозможен.
+4. В `priced_lines` умножьте цену материалов на количество изделий. Итог по заказу вычисляйте только тогда, когда рассчитаны все позиции. `OVER (PARTITION BY order_id)` позволяет показать итог рядом со строками для сверки.
 
 ```sql
-INSERT INTO app.specification_material (id, specification_id, material_item_id, qty, unit)
-VALUES
-(1, 1, 1001, 0.25, 'л'),
-(2, 1, 1002, 0.03, 'кг');
-```
-
-### 4.2. Материалы для какао-напитка (product_item_id = 2002)
-
-* Молоко: 0.30 л на 1 шт
-* Сахар: 0.02 кг на 1 шт
-* Какао: 0.01 кг на 1 шт
-
-```sql
-INSERT INTO app.specification_material (id, specification_id, material_item_id, qty, unit)
-VALUES
-(3, 2, 1001, 0.30, 'л'),
-(4, 2, 1002, 0.02, 'кг'),
-(5, 2, 1003, 0.01, 'кг');
-```
-
----
-
-## 5. Наполнение таблицы `app.price` (цены на материалы)
-
-```sql
-INSERT INTO app.price (id, item_id, price, effective_from, effective_to)
-VALUES
-(1, 1001, 80.00,  '2025-01-01', NULL),  -- молоко 80 руб/л
-(2, 1002, 65.00,  '2025-01-01', NULL),  -- сахар 65 руб/кг
-(3, 1003, 500.00, '2025-01-01', NULL);  -- какао 500 руб/кг
-```
-
----
-
-## 6. Наполнение таблицы `app.customer_order` (шапка заказа)
-
-Создадим один заказ с `id = 1`.
-
-```sql
-INSERT INTO app.customer_order (id, doc_no, doc_date, executor_id, customer_id, total_amount)
-VALUES
-(1, 'ORD-2025-001', '2025-03-15', '000000002', '000000003', 0.00);
-```
-
-> `total_amount` пока оставляем `0.00`, так как итог будем вычислять запросом.
-
----
-
-## 7. Наполнение таблицы `app.customer_order_line` (строки заказа)
-
-В заказ добавим:
-
-* Йогурт — 10 шт
-* Какао напиток — 5 шт
-
-```sql
-INSERT INTO app.customer_order_line (id, customer_order_id, product_item_id, qty, unit, unit_price, line_amount)
-VALUES
-(1, 1, 2001, 10, 'шт', NULL, NULL),
-(2, 1, 2002,  5, 'шт', NULL, NULL);
-```
-
----
-
-## 8. Проверка наличия данных перед расчётом
-
-```sql
-SELECT *
-FROM app.customer_order_line
-WHERE customer_order_id = 1;
-```
-
----
-
-## 9. Выполнение расчёта (ваш запрос)
-
-Выполните запрос, заменив значение в `col.customer_order_id` на требуемое:
-
-```sql
-WITH material_cost_per_unit AS (
-    SELECT
-        s.product_item_id,
-        SUM(
-            (sm.qty / NULLIF(s.output_qty, 0)) * p.price
-        ) AS cost_per_unit
-    FROM app.specification s
-    JOIN app.specification_material sm
-        ON sm.specification_id = s.id
-    JOIN app.price p
-        ON p.item_id = sm.material_item_id
-    GROUP BY s.product_item_id
+WITH spec_candidates AS (
+    SELECT product_item_id, COUNT(*) AS spec_count, MIN(id) AS spec_id
+    FROM app.specification
+    GROUP BY product_item_id
+),
+components AS (
+    SELECT o.id AS order_id, o.doc_no, o.doc_date, l.id AS line_id,
+           product.name AS product, l.qty AS order_qty,
+           source.spec_count, s.output_qty, sm.id AS component_id,
+           sm.qty AS material_qty, p.price
+    FROM app.customer_order AS o
+    JOIN app.customer_order_line AS l ON l.customer_order_id = o.id
+    JOIN app.item AS product ON product.id = l.product_item_id
+    LEFT JOIN spec_candidates AS source ON source.product_item_id = l.product_item_id
+    LEFT JOIN app.specification AS s ON s.id = source.spec_id AND source.spec_count = 1
+    LEFT JOIN app.specification_material AS sm ON sm.specification_id = s.id
+    LEFT JOIN app.price AS p ON p.id = (
+        SELECT applicable.id
+        FROM app.price AS applicable
+        WHERE applicable.item_id = sm.material_item_id
+          AND (applicable.effective_from IS NULL OR applicable.effective_from <= o.doc_date)
+          AND (applicable.effective_to IS NULL OR applicable.effective_to >= o.doc_date)
+        ORDER BY applicable.effective_from IS NULL, applicable.effective_from DESC, applicable.id DESC
+        LIMIT 1
+    )
+    WHERE o.doc_no = '2' AND o.doc_date = DATE '2025-06-06'
+),
+line_check AS (
+    SELECT order_id, doc_no, doc_date, line_id, product, order_qty,
+           CASE
+               WHEN MAX(spec_count) IS NULL THEN 'нет спецификации'
+               WHEN MAX(spec_count) > 1 THEN 'несколько спецификаций'
+               WHEN MAX(output_qty) IS NULL OR MAX(output_qty) <= 0 THEN 'нет нормы выпуска'
+               WHEN COUNT(component_id) = 0 THEN 'нет состава материалов'
+               WHEN COUNT(price) < COUNT(component_id) THEN 'нет цены материала'
+               ELSE 'рассчитано'
+           END AS calculation_status,
+           SUM(material_qty * price) / NULLIF(MAX(output_qty), 0) AS material_cost_per_unit
+    FROM components
+    GROUP BY order_id, doc_no, doc_date, line_id, product, order_qty
+),
+priced_lines AS (
+    SELECT order_id, doc_no, doc_date, line_id, product, order_qty, calculation_status,
+           CASE WHEN calculation_status = 'рассчитано' THEN order_qty * material_cost_per_unit END AS line_cost
+    FROM line_check
 )
-SELECT
-    col.customer_order_id           AS order_id,
-    SUM(col.qty)                    AS total_product_qty,
-    SUM(col.qty * m.cost_per_unit)  AS total_order_cost
-FROM app.customer_order_line col
-JOIN material_cost_per_unit m
-    ON m.product_item_id = col.product_item_id
-WHERE col.customer_order_id = 1
-GROUP BY col.customer_order_id;
+SELECT doc_no, doc_date, product, order_qty, calculation_status, ROUND(line_cost, 2) AS line_cost,
+       CASE WHEN COUNT(line_cost) OVER (PARTITION BY order_id) = COUNT(*) OVER (PARTITION BY order_id)
+            THEN ROUND(SUM(line_cost) OVER (PARTITION BY order_id), 2)
+       END AS total_order_cost
+FROM priced_lines
+ORDER BY order_id, line_id;
 ```
 
----
+## Сверьте и сохраните результат
 
-## 10. Расчёт полной стоимости заказа **одним SQL-запросом (`SELECT`)**
+| Продукция заказа № 2 | Количество | Статус расчёта |
+|---|---:|---|
+| Кефир 2,5% 900г. | 12 | нет спецификации |
+| Кефир 3,2% 900г. | 9 | нет спецификации |
+| Молоко 2,5% 900г. | 10 | нет спецификации |
 
-В данном варианте расчёт выполняется **одним оператором `SELECT`**, без использования `WITH` (CTE).
-Вся логика вычисления встроена во вложенный подзапрос в секции `FROM`.
+На исходных данных обе колонки стоимости в итоговой выборке будут `NULL`. Три позиции сохранены, а запрос указывает, что именно требуется для расчёта. Число `36.70` из контрольной калькуляции относится к отдельному изделию. Число `2488.00` взято из колонки продажи в заказе.
 
----
+![Три позиции заказа и три статуса «нет спецификации» в pgAdmin](../../assets/images/preparation/postgres-m3-order-result.png)
 
-### 10.1. SQL-запрос (один `SELECT`)
-
-```sql
-SELECT
-    col.customer_order_id           AS order_id,
-    SUM(col.qty)                    AS total_product_qty,
-    SUM(
-        col.qty *
-        (
-            SELECT
-                SUM((sm.qty / NULLIF(s.output_qty, 0)) * p.price)
-            FROM app.specification s
-            JOIN app.specification_material sm
-                ON sm.specification_id = s.id
-            JOIN app.price p
-                ON p.item_id = sm.material_item_id
-            WHERE s.product_item_id = col.product_item_id
-        )
-    ) AS total_order_cost
-FROM app.customer_order_line col
-WHERE col.customer_order_id = 1   -- ← идентификатор заказа
-GROUP BY col.customer_order_id;
-```
-
----
-
-### 10.2. Логика работы запроса
-
-1. Основной запрос выбирает строки заказа из таблицы `customer_order_line`.
-2. Для каждой строки заказа:
-
-   * во вложенном подзапросе вычисляется **стоимость материалов на 1 единицу продукции**;
-   * учитываются нормы расхода (`specification_material.qty`);
-   * учитываются цены материалов (`price.price`).
-3. Стоимость одной единицы продукции умножается на:
-
-   * количество продукции в строке заказа (`col.qty`).
-4. Итоговая стоимость заказа вычисляется как:
-
-   * сумма по всем строкам заказа.
-
----
-
-### 10.3. Как использовать запрос
-
-1. Откройте **pgAdmin → Query Tool**.
-2. Вставьте запрос из пункта **10.1**.
-3. Замените значение в условии:
-
-```sql
-WHERE col.customer_order_id = 1
-```
-
-на нужный идентификатор заказа.
-4. Выполните запрос (**Execute**).
-
----
-
-### 10.4. Преимущества данного варианта
-
-* используется **ровно один `SELECT`**;
-* отсутствуют `WITH`, временные таблицы и переменные;
-* подходит для учебных работ и демонстрации принципа расчёта;
-* логика полностью читается в одном запросе.
-
-В готовом дампе есть заказы № 1–3. Для ручного варианта проверьте заказ № 1.
-
-## 11. Ожидаемая логика результата (контроль вручную)
-
-Для контроля расчёта сначала определим **стоимость материалов на 1 единицу продукции**, затем посчитаем **итог по каждому заказу**.
-
----
-
-### 11.1. Стоимость материалов на 1 единицу продукции
-
-#### Продукт **Йогурт (product_item_id = 2001)**
-
-* молоко: `0.25 × 80.00 = 20.00`
-* сахар: `0.03 × 65.00 = 1.95`
-
-**Итого на 1 шт:**
-`20.00 + 1.95 = 21.95`
-
----
-
-#### Продукт **Какао напиток (product_item_id = 2002)**
-
-* молоко: `0.30 × 80.00 = 24.00`
-* сахар: `0.02 × 65.00 = 1.30`
-* какао:  `0.01 × 500.00 = 5.00`
-
-**Итого на 1 шт:**
-`24.00 + 1.30 + 5.00 = 30.30`
-
----
-
-### 11.2. Итоговая стоимость заказа №1 (order_id = 1)
-
-По таблице `customer_order_line`:
-
-* `2001` (йогурт) — `qty = 10`
-* `2002` (какао) — `qty = 5`
-
-Расчёт:
-
-* йогурт: `21.95 × 10 = 219.50`
-* какао:  `30.30 × 5  = 151.50`
-
-**Итого по заказу №1:**
-`219.50 + 151.50 = 371.00`
-
----
-
-### 11.3. Итоговая стоимость заказа №2 (order_id = 2)
-
-По таблице `customer_order_line`:
-
-* `2001` — `qty = 3`
-* `2002` — `qty = 2`
-
-Расчёт:
-
-* йогурт: `21.95 × 3 = 65.85`
-* какао:  `30.30 × 2 = 60.60`
-
-**Итого по заказу №2:**
-`65.85 + 60.60 = 126.45`
-
----
-
-### 11.4. Итоговая стоимость заказа №3 (order_id = 3)
-
-По таблице `customer_order_line`:
-
-* `2001` — `qty = 7`
-* `2002` — `qty = 1`
-
-Расчёт:
-
-* йогурт: `21.95 × 7 = 153.65`
-* какао:  `30.30 × 1 = 30.30`
-
-**Итого по заказу №3:**
-`153.65 + 30.30 = 183.95`
-
----
-
-### 11.5. Сводная таблица ожидаемых итогов
-
-* Заказ **1** → **371.00**
-* Заказ **2** → **126.45**
-* Заказ **3** → **183.95**
-
- 
+В окне **Query Tool** нажмите **Save File** и сохраните итоговый запрос как `Запрос стоимости.sql` в своей папке «База». Сохраните снимок трёх строк заказа и отдельно снимок контрольной калькуляции.

@@ -1,6 +1,6 @@
 # Модуль 2. Пример решения — через конструктор phpMyAdmin
 
-**Цель:** создать БД и таблицы по ER через графический интерфейс phpMyAdmin (без написания SQL вручную), затем импортировать `Заказчики.json`.
+Цель задания — создать базу и таблицы по своей ER-диаграмме в phpMyAdmin, настроить ключи и импортировать `Заказчики.json`.
 
 ---
 
@@ -60,9 +60,9 @@
 
 ## 2. Создание базы данных
 
-1. Вкладка **Databases** → в поле **Create database** введите `dairy_demo`.
-2. Collation: `utf8mb4_unicode_ci`.
-3. Нажмите **Create**.
+1. Нажмите **Создать БД** (**New**) в левой панели. В поле **Имя базы данных** введите `dairy_demo`.
+2. В списке **Сравнение** (**Collation**) выберите `utf8mb4_unicode_ci`.
+3. Нажмите **Создать** (**Create**).
 
    ![Создание базы данных](../../assets/images/6.png)
 
@@ -80,13 +80,17 @@
 
 ---
 
-## 3. Создание таблиц через конструктор
+## Настройки конструктора таблиц
 
-> Для каждой таблицы: выберите `dairy_demo` → вкладка **Structure** → **Create table**.
+1. Откройте `dairy_demo` и вкладку **Структура** (**Structure**). В блоке **Создать новую таблицу** укажите её имя и количество полей. Нажмите **Создать** или **Вперёд**.
+2. Заполните **Имя**, **Тип** и **Длина/Значения**. Например, для `DECIMAL(12,3)` выберите тип `DECIMAL` и введите `12,3` в **Длина/Значения**. Для `BIGINT` оставьте длину пустой.
+3. Для `id` во всех 12 таблицах отметьте **A_I** (**AUTO_INCREMENT**) и проверьте, что в **Индекс** выбрано **PRIMARY**. База выдаёт номер при добавлении новой записи, а ключ гарантирует уникальность.
+4. Если таблица разрешает пустое значение, поставьте флажок **Null** и в поле **По умолчанию** выберите **NULL**. Для числового значения по умолчанию выберите **Как определено** и впишите число. У обязательных полей флажок **Null** оставьте пустым.
+5. Убедитесь, что в **Тип таблиц** выбран **InnoDB**. Сравнение можно оставить пустым, чтобы таблица унаследовала `utf8mb4_unicode_ci` от базы. Нажмите **Сохранить** и сверьте поля на вкладке **Структура**.
 
 ---
 
-### 3.1. COUNTERPARTY
+## Создайте таблицу counterparty
 
 Имя таблицы: `counterparty`, количество столбцов: **7**.
 
@@ -102,7 +106,7 @@
 
 - Engine: **InnoDB**, Collation: `utf8mb4_unicode_ci`
 
-   ![Создание таблицы](../../assets/images/7.png)
+   ![Столбцы counterparty в конструкторе phpMyAdmin](../../assets/images/preparation/mysql-counterparty-form.png)
 
    /// caption
    Рисунок 9 – Задание имени и структуры таблицы
@@ -112,7 +116,7 @@
 
 ---
 
-### 3.2. ITEM
+## Создайте таблицу item
 
 Имя: `item`, столбцов: **5**.
 
@@ -124,6 +128,8 @@
 | item_type | ENUM('product','material') | | NO | | | |
 | unit_default | VARCHAR | 32 | YES | NULL | | |
 
+Для `item_type` выберите **ENUM** и в поле **Длина/Значения** введите `'product','material'`. Для `code` в столбце **Индекс** выберите **UNIQUE**, в окне индекса введите `uq_item_code`, оставьте столбец `code` и нажмите **Вперёд**. Сохраните таблицу и проверьте индекс в разделе **Индексы** на вкладке **Структура**.
+
    ![ITEM](../../assets/images/61.png)
 
    /// caption
@@ -132,7 +138,7 @@
 
 ---
 
-### 3.3. PRICE
+## Создайте таблицу price
 
 Имя: `price`, столбцов: **5**.
 
@@ -154,7 +160,9 @@ FK: `item_id` → `item(id)` ON UPDATE CASCADE ON DELETE RESTRICT
 
 ---
 
-### 3.4. SPECIFICATION
+## Создайте таблицу specification
+
+Имя: `specification`, столбцов: **6**.
 
 | Field | Type | Null | Default |
 |-------|------|------|---------|
@@ -171,7 +179,9 @@ FK: `item_id` → `item(id)` ON UPDATE CASCADE ON DELETE RESTRICT
    Рисунок 14 – Таблица `specification`
    ///
 
-### 3.5. SPECIFICATION_MATERIAL
+## Создайте таблицу specification_material
+
+Имя: `specification_material`, столбцов: **5**.
 
 | Field | Type | Null |
 |-------|------|------|
@@ -181,7 +191,9 @@ FK: `item_id` → `item(id)` ON UPDATE CASCADE ON DELETE RESTRICT
 | qty | DECIMAL(12,3) | NO |
 | unit | VARCHAR(32) | YES |
 
-Уникальное ограничение: `(specification_id, material_item_id)`
+Чтобы один материал вносился в спецификацию только один раз, добавьте составной индекс `(specification_id, material_item_id)`. На вкладке **Структура** в блоке **Индексы** укажите **Создать индекс для 2 столбцов** и нажмите **Вперёд**. В окне **Добавить индекс** введите `uq_spec_material`, выберите **UNIQUE** и укажите в первой строке `specification_id`, во второй — `material_item_id`. Оба поля **Размер** оставьте пустыми. Нажмите **Вперёд**.
+
+   ![Настройка составного уникального индекса](../../assets/images/preparation/mysql-specification-unique.png)
 
    ![SPECIFICATION_MATERIAL](../../assets/images/64.png)
 
@@ -191,9 +203,10 @@ FK: `item_id` → `item(id)` ON UPDATE CASCADE ON DELETE RESTRICT
 
 ---
 
-### 3.6. PRODUCTION_ORDER, PRODUCTION_PRODUCT_LINE, PRODUCTION_MATERIAL_LINE
+## Создайте таблицу production_order
 
- 
+Имя: `production_order`, столбцов: **5**.
+
 | Имя | Тип | Null |
 |---|---|---|
 | id | BIGINT(20) | ☐ |
@@ -209,6 +222,10 @@ FK: `item_id` → `item(id)` ON UPDATE CASCADE ON DELETE RESTRICT
    Рисунок 16 – Таблица `production_order`
    ///
 
+## Создайте таблицу production_product_line
+
+Имя: `production_product_line`, столбцов: **5**.
+
 | Имя | Тип | Null |
 |---|---|---|
 | id | BIGINT(20) | ☐ |
@@ -223,6 +240,11 @@ FK: `item_id` → `item(id)` ON UPDATE CASCADE ON DELETE RESTRICT
    /// caption
    Рисунок 17 – Таблица `production_product_line`
    ///
+
+## Создайте таблицу production_material_line
+
+Имя: `production_material_line`, столбцов: **5**.
+
 | Имя | Тип | Null |
 |---|---|---|
 | id | BIGINT(20) | ☐ |
@@ -239,8 +261,9 @@ FK: `item_id` → `item(id)` ON UPDATE CASCADE ON DELETE RESTRICT
 
 ---
 
-### 3.7. CUSTOMER_ORDER и CUSTOMER_ORDER_LINE
+## Создайте таблицу customer_order
 
+Имя: `customer_order`, столбцов: **6**.
 
 | Имя | Тип | Null |
 |---|---|---|
@@ -257,7 +280,9 @@ FK: `item_id` → `item(id)` ON UPDATE CASCADE ON DELETE RESTRICT
    Рисунок 19 – Таблица `customer_order`
    ///
 
-**customer_order_line** (Image 5)
+## Создайте таблицу customer_order_line
+
+Имя: `customer_order_line`, столбцов: **7**.
 
 | Имя | Тип | Null |
 |---|---|---|
@@ -277,8 +302,9 @@ FK: `item_id` → `item(id)` ON UPDATE CASCADE ON DELETE RESTRICT
 
 ---
 
-### 3.8. COST_CALCULATION и COST_CALCULATION_LINE
+## Создайте таблицу cost_calculation
 
+Имя: `cost_calculation`, столбцов: **5**. Для `product_qty` задайте значение по умолчанию `1.000`.
 
 | Имя | Тип | Null |
 |---|---|---|
@@ -293,6 +319,10 @@ FK: `item_id` → `item(id)` ON UPDATE CASCADE ON DELETE RESTRICT
    /// caption
    Рисунок 21 – Таблица `cost_calculation`
    ///
+
+## Создайте таблицу cost_calculation_line
+
+Имя: `cost_calculation_line`, столбцов: **7**.
 
 
 | Имя | Тип | Null |
@@ -315,13 +345,40 @@ FK: `item_id` → `item(id)` ON UPDATE CASCADE ON DELETE RESTRICT
 
 ## 4. Настройка внешних ключей (Relation view)
 
-Для каждой таблицы: вкладка **Structure** → внизу кнопка **Relation view**.
+Создавайте связи после того, как сохранены все 12 таблиц. Откройте таблицу, в которой находится внешний ключ, затем **Структура → Связи** (**Structure → Relation view**).
+
+1. Введите имя ограничения в блоке **Ограничения внешнего ключа**. Для `price.item_id` используйте `fk_price_item`.
+2. В левом столбце **Столбец** укажите `item_id`. Справа выберите базу `dairy_demo`, таблицу `item` и её столбец `id`. Список столбцов справа появится после выбора таблицы.
+3. Для всех связей укажите **ON UPDATE → CASCADE**. Для **ON DELETE** используйте действие из таблицы ниже. `CASCADE` удаляет строки документа вместе с его шапкой. `RESTRICT` защищает общую запись справочника, пока на неё кто-то ссылается.
+4. Если у таблицы два разных внешних ключа, нажмите **+ Добавить ограничение**. Кнопка **+ Добавить столбец** добавляет поле в тот же ключ. После заполнения нажмите **Сохранить** и сверьте, что оба ограничения сохранились.
 
    ![Relation view](../../assets/images/72.png)
 
    /// caption
    Рисунок 23 – Переход в Relation view
    ///
+
+Для каждой строки укажите правый столбец `id`.
+
+| Таблица и поле FK | Таблица PK | Имя ограничения | ON DELETE |
+|---|---|---|---|
+| `price.item_id` | `item` | `fk_price_item` | RESTRICT |
+| `specification.product_item_id` | `item` | `fk_spec_product` | RESTRICT |
+| `specification.manufacturer_id` | `counterparty` | `fk_spec_manufacturer` | RESTRICT |
+| `specification_material.specification_id` | `specification` | `fk_specmat_spec` | CASCADE |
+| `specification_material.material_item_id` | `item` | `fk_specmat_material` | RESTRICT |
+| `production_order.manufacturer_id` | `counterparty` | `fk_prodorder_manufacturer` | RESTRICT |
+| `production_product_line.production_order_id` | `production_order` | `fk_prodprod_order` | CASCADE |
+| `production_product_line.product_item_id` | `item` | `fk_prodprod_item` | RESTRICT |
+| `production_material_line.production_order_id` | `production_order` | `fk_prodmat_order` | CASCADE |
+| `production_material_line.material_item_id` | `item` | `fk_prodmat_item` | RESTRICT |
+| `customer_order.executor_id` | `counterparty` | `fk_custorder_executor` | RESTRICT |
+| `customer_order.customer_id` | `counterparty` | `fk_custorder_customer` | RESTRICT |
+| `customer_order_line.customer_order_id` | `customer_order` | `fk_custline_order` | CASCADE |
+| `customer_order_line.product_item_id` | `item` | `fk_custline_item` | RESTRICT |
+| `cost_calculation.product_item_id` | `item` | `fk_costcalc_product` | RESTRICT |
+| `cost_calculation_line.cost_calculation_id` | `cost_calculation` | `fk_costline_calc` | CASCADE |
+| `cost_calculation_line.material_item_id` | `item` | `fk_costline_item` | RESTRICT |
 
 ### FK: price → item
 
@@ -341,7 +398,7 @@ FK: `item_id` → `item(id)` ON UPDATE CASCADE ON DELETE RESTRICT
 
 ### FK: specification_material
 
-   ![FK specification_material](../../assets/images/75.png)
+   ![Два отдельных внешних ключа таблицы specification_material](../../assets/images/preparation/mysql-specification-fks.png)
 
    /// caption
    Рисунок 26 – Связи таблицы `specification_material`
@@ -405,42 +462,36 @@ FK: `item_id` → `item(id)` ON UPDATE CASCADE ON DELETE RESTRICT
 
 ---
 
-## 5. Импорт Заказчики.json через конструктор
+## Откройте исходный JSON в Excel
 
-> phpMyAdmin **не поддерживает прямой JSON-импорт** в структуру таблицы.
-> Используйте подход: **JSON → CSV → Import**.
+1. Распакуйте приложение к заданию 2 и найдите в нём [Заказчики.json](../../postgresql/assets/files/Заказчики.json).
+2. Создайте пустую книгу Excel. Откройте **Данные → Получить данные → Из файла → Из JSON** и выберите этот файл.
 
-### Шаг 1. Подготовьте CSV
+   ![Команда «Из JSON» на вкладке «Данные»](../../assets/images/preparation/mysql-excel-json.png)
 
-[Скачайте готовый CSV из исходного JSON](../files/customers.csv), чтобы сверить свои данные.
+3. В редакторе Power Query появится список из шести строк `Record`. Нажмите **В таблицу**. В окне преобразования оставьте разделитель **Нет** и нажмите **ОК**.
+4. В заголовке `Column1` нажмите кнопку с двумя стрелками. Отметьте все семь полей, снимите флажок **Использовать исходное имя столбца как префикс** и нажмите **ОК**.
 
-1. В Excel выберите **Данные → Получить данные → Из файла → Из JSON** и откройте `Заказчики.json`.
-2. В Power Query преобразуйте список в таблицу и разверните поля.
-3. Сохраните порядок столбцов `id, name, inn, address, phone, is_salesman, is_buyer`. Переименуйте `addres`, `salesman` и `buyer`.
-4. Установите для ИНН и телефона тип **Текст**, а в двух последних столбцах используйте `1` и `0`. Идентификатор в MySQL хранится числом. Например, `000000003` соответствует записи `3`.
-5. Сохраните CSV в UTF-8. В параметрах импорта укажите фактический разделитель файла. В готовом файле разделитель — запятая.
+   ![Разворачивание семи полей без префикса](../../assets/images/preparation/mysql-power-query-expand.png)
 
-### Шаг 2: Import CSV через phpMyAdmin
+5. Нажмите **Главная → Закрыть и загрузить**. Excel создаст лист «Заказчики» с семью столбцами и шестью строками данных.
 
-1. `dairy_demo` → таблица `counterparty` → вкладка **Import**.
+## Сохраните CSV для импорта
 
-   ![Import tab](../../assets/images/83.png)
+1. На листе «Заказчики» переименуйте заголовки `addres` → `address`, `salesman` → `is_salesman`, `buyer` → `is_buyer`. Сохраните порядок `id, name, inn, address, phone, is_salesman, is_buyer`.
+2. В двух последних столбцах замените `ИСТИНА` (`TRUE`) на `1`, а `ЛОЖЬ` (`FALSE`) на `0`. Оставьте ИНН и телефоны такими, какими они загрузились из JSON. Проверьте знак `+` у телефонов и пустой ИНН у первой записи. В MySQL поле `id` числовое, поэтому значение `000000003` станет `3`.
+3. Оставьте лист «Заказчики» активным. Нажмите **F12** и выберите **CSV UTF-8 (разделитель — запятая) (*.csv)**. Сохраните `Заказчики.csv`. Если Excel спросит о листах, подтвердите сохранение текущего листа.
+4. Сделайте копию `Заказчики-импорт.csv` и откройте её в Блокноте. Посмотрите, чем разделены имена полей в первой строке. В зависимости от региональных настроек Excel это `,` или `;`.
+5. В копии нажмите **Ctrl+Home**, **Shift+↓**, затем **Delete**. Сохраните файл. Первая строка должна начинаться с `000000001` и содержать данные первого заказчика. phpMyAdmin при импорте в существующую таблицу прочитает каждую строку файла как запись.
 
-   /// caption
-   Рисунок 34 – Вкладка Import в phpMyAdmin
-   ///
+## Импортируйте шесть записей в counterparty
 
-2. **Choose file** → выберите `Заказчики.csv`.
-3. Format: **CSV**. Отметьте: *The first line of the file contains the table column names*.
-4. Character set: **utf-8**, разделитель: `,`.
+1. В phpMyAdmin откройте `dairy_demo` → `counterparty` → **Импорт**. В поле **Импортируемый файл** выберите `Заказчики-импорт.csv`.
+2. Укажите формат **CSV**, кодировку **utf-8** и фактический **Разделитель полей** из Блокнота. Для **Значения полей обрамлены** и **Символ экранирования** оставьте двойную кавычку (`"`). Для **Разделитель строк** оставьте `auto`. Поле **Названия столбцов** оставьте пустым, поскольку порядок полей в файле совпадает с порядком полей в таблице.
 
-   ![Import settings](../../assets/images/84.png)
+   ![Параметры импорта CSV с разделителем «точка с запятой»](../../assets/images/preparation/mysql-csv-import.png)
 
-   /// caption
-   Рисунок 35 – Настройки CSV-импорта
-   ///
-
-5. Нажмите **Go**. На вкладке **Browse** должно быть шесть строк. Сверьте у записи `id = 3` адрес, ИНН `4140784214` и телефон `+79882584546`. У записи `id = 1` ИНН отсутствует.
+3. Нажмите **Импорт**. phpMyAdmin должен сообщить, что выполнено шесть запросов. Перейдите на вкладку **Обзор**. У записи `id = 3` сверьте адрес, ИНН `4140784214` и телефон `+79882584546`. У записи `id = 1` поле ИНН пустое.
 
 ---
 
@@ -460,8 +511,10 @@ FK: `item_id` → `item(id)` ON UPDATE CASCADE ON DELETE RESTRICT
    Рисунок 37 – Экспорт структуры для подтверждения
    ///
 
+## Выгрузите собственную базу
+
+Выберите `dairy_demo` в левой панели. Убедитесь, что в заголовке указана база целиком. Откройте **Экспорт**, оставьте **Быстрый** способ и формат **SQL**. Нажмите **Экспорт** и сохраните полученный `dairy_demo.sql` в папку «База». В текстовом редакторе проверьте, что выгрузка содержит определения двенадцати таблиц, внешние ключи и строки из `counterparty`.
+
+На домашней репетиции создайте отдельную базу `dairy_demo_check`, выберите её в левой панели и импортируйте туда свою выгрузку в формате **SQL**. Сверьте 12 таблиц и шесть записей в `counterparty`. Для задания 3 вернитесь в `dairy_demo`.
+
 ---
-
-## 7. Скачать готовую базу данных
-
-[ Скачать dairy_demo.sql](../files/dairy_demo.sql){ .md-button }

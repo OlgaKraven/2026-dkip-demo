@@ -46,6 +46,11 @@ function schemaFromDump(sql) {
       const field=source.fields.find(item=>item.id===name);
       if(field)field.autoIncrement=true;
     }
+    const serial=changes.match(/ALTER COLUMN (\w+) SET DEFAULT nextval\(/i);
+    const serialField=serial&&source.fields.find(field=>field.id===serial[1]);
+    if(serialField)serialField.autoIncrement=true;
+    const check=changes.match(/^ADD CONSTRAINT \S+ CHECK \((.*)\)(?: NOT VALID)?$/is);
+    if(check)source.checks.push(check[1]);
     for(const [,rawField,rawTarget,rawColumn,rules] of changes.matchAll(/FOREIGN KEY\s*\(([^)]+)\)\s*REFERENCES\s+(\S+?)\s*\(([^)]+)\)([^,\n]*)/g)){
       const field=tableName(rawField.trim()),to=tableName(rawTarget),target=tableName(rawColumn.trim());
       const column=source.fields.find(column=>column.id===field);
@@ -53,7 +58,11 @@ function schemaFromDump(sql) {
       column.fk=true;
       const onDelete=rules.match(/ON DELETE (CASCADE|SET NULL|NO ACTION|RESTRICT)/)?.[1]||'RESTRICT';
       const onUpdate=rules.match(/ON UPDATE (CASCADE|SET NULL|NO ACTION|RESTRICT)/)?.[1]||'RESTRICT';
-      links.push({from,field,to,target,onDelete,onUpdate,cardinality:'1 : N',explanation:`${from}.${field} ссылается на ${to}.${target}.`});
+      links.push({
+        from,field,to,target,onDelete,onUpdate,parentOptional:column.nullable,
+        cardinality:column.nullable?'0..1 : 0..N':'1 : 0..N',
+        explanation:`${from}.${field} ссылается на ${to}.${target}.`,
+      });
     }
   }
   if(byTable.size!==order.length || links.length<10)throw new Error('Не удалось извлечь учебную ER-модель.');
@@ -66,8 +75,6 @@ export async function er2026(data) {
     const sqlPath='examples/'+stack+'/SQL/dairy_demo.sql';
     const schema=schemaFromDump(data.code[sqlPath]);
     schema.layouts=await buildErLayouts({order,stacks:{postgresql:schema}});
-    schema.sqlPath=stack==='mysql'
-      ? 'materials/source/mysql/files/dairy_demo.sql' : 'materials/source/postgresql/assets/files/dairy_demo.sql';
     stacks[stack]=schema;
   }
   return {order,stacks,source:{code:data.official.code,files:data.documents.mysql[0].map(file=>file.name)},

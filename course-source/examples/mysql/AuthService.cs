@@ -41,19 +41,17 @@ public sealed class AuthService
         if (user.IsLocked)
             return (false, "Вы заблокированы. Обратитесь к администратору", null);
 
-        if (!captchaOk)
-        {
-            await _repo.IncrementFailedAttemptsAndLockIfNeededAsync(user.Id);
-            return (false, "Соберите изображение для подтверждения", null);
-        }
-
-        if (!PasswordService.Verify(password, user.PasswordHash))
+        // После любой ошибки проверяем, достиг ли общий счётчик трёх попыток.
+        if (!captchaOk || !PasswordService.Verify(password, user.PasswordHash))
         {
             await _repo.IncrementFailedAttemptsAndLockIfNeededAsync(user.Id);
             var updated = await _repo.GetByLoginAsync(login);
             if (updated?.IsLocked == true)
                 return (false, "Вы заблокированы. Обратитесь к администратору", null);
-            return (false, "Вы ввели неверный логин или пароль. Пожалуйста проверьте ещё раз введенные данные", null);
+            var message = captchaOk
+                ? "Вы ввели неверный логин или пароль. Пожалуйста проверьте ещё раз введенные данные"
+                : "Соберите изображение для подтверждения";
+            return (false, message, null);
         }
 
         await _repo.ResetFailedAttemptsAsync(user.Id);

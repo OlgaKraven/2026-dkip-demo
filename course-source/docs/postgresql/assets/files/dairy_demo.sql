@@ -2,13 +2,15 @@
 -- PostgreSQL database dump
 --
 
+\restrict CEoNn8CaxkHCCjd3z4BElZb2jtoWF4dKzO28fTyLx5tsAeB5Bv23Ijmw9vkoy4O
 
--- Dumped from database version 16.13 (Homebrew)
--- Dumped by pg_dump version 16.13 (Homebrew)
+-- Dumped from database version 18.1
+-- Dumped by pg_dump version 18.1
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
 SET idle_in_transaction_session_timeout = 0;
+SET transaction_timeout = 0;
 SET client_encoding = 'UTF8';
 SET standard_conforming_strings = on;
 SELECT pg_catalog.set_config('search_path', '', false);
@@ -37,9 +39,7 @@ CREATE TABLE app.cost_calculation (
     calc_date date,
     product_item_id bigint NOT NULL,
     product_qty numeric(12,3) DEFAULT 1 NOT NULL,
-    total_cost numeric(12,2),
-    CONSTRAINT cost_calculation_product_qty_check CHECK ((product_qty > (0)::numeric)),
-    CONSTRAINT cost_calculation_total_cost_check CHECK ((total_cost >= (0)::numeric))
+    total_cost numeric(12,2)
 );
 
 
@@ -73,10 +73,7 @@ CREATE TABLE app.cost_calculation_line (
     qty numeric(12,3) NOT NULL,
     unit text,
     unit_cost numeric(12,2),
-    line_cost numeric(12,2),
-    CONSTRAINT cost_calculation_line_line_cost_check CHECK ((line_cost >= (0)::numeric)),
-    CONSTRAINT cost_calculation_line_qty_check CHECK ((qty > (0)::numeric)),
-    CONSTRAINT cost_calculation_line_unit_cost_check CHECK ((unit_cost >= (0)::numeric))
+    line_cost numeric(12,2)
 );
 
 
@@ -115,15 +112,6 @@ CREATE TABLE app.counterparty (
 
 
 --
--- Name: counterparty_import; Type: TABLE; Schema: app; Owner: -
---
-
-CREATE TABLE app.counterparty_import (
-    payload jsonb NOT NULL
-);
-
-
---
 -- Name: customer_order; Type: TABLE; Schema: app; Owner: -
 --
 
@@ -133,8 +121,7 @@ CREATE TABLE app.customer_order (
     doc_date date,
     executor_id text,
     customer_id text,
-    total_amount numeric(12,2),
-    CONSTRAINT customer_order_total_amount_check CHECK ((total_amount >= (0)::numeric))
+    total_amount numeric(12,2)
 );
 
 
@@ -168,10 +155,7 @@ CREATE TABLE app.customer_order_line (
     qty numeric(12,3) NOT NULL,
     unit text,
     unit_price numeric(12,2),
-    line_amount numeric(12,2),
-    CONSTRAINT customer_order_line_line_amount_check CHECK ((line_amount >= (0)::numeric)),
-    CONSTRAINT customer_order_line_qty_check CHECK ((qty > (0)::numeric)),
-    CONSTRAINT customer_order_line_unit_price_check CHECK ((unit_price >= (0)::numeric))
+    line_amount numeric(12,2)
 );
 
 
@@ -203,8 +187,7 @@ CREATE TABLE app.item (
     code text,
     name text NOT NULL,
     item_type text NOT NULL,
-    unit_default text,
-    CONSTRAINT item_item_type_check CHECK ((item_type = ANY (ARRAY['product'::text, 'material'::text])))
+    unit_default text
 );
 
 
@@ -236,9 +219,7 @@ CREATE TABLE app.price (
     item_id bigint NOT NULL,
     price numeric(12,2) NOT NULL,
     effective_from date,
-    effective_to date,
-    CONSTRAINT price_check CHECK (((effective_to IS NULL) OR (effective_from IS NULL) OR (effective_to >= effective_from))),
-    CONSTRAINT price_price_check CHECK ((price >= (0)::numeric))
+    effective_to date
 );
 
 
@@ -270,8 +251,7 @@ CREATE TABLE app.production_material_line (
     production_order_id bigint NOT NULL,
     material_item_id bigint NOT NULL,
     qty numeric(12,3) NOT NULL,
-    unit text,
-    CONSTRAINT production_material_line_qty_check CHECK ((qty > (0)::numeric))
+    unit text
 );
 
 
@@ -335,8 +315,7 @@ CREATE TABLE app.production_product_line (
     production_order_id bigint NOT NULL,
     product_item_id bigint NOT NULL,
     qty numeric(12,3) NOT NULL,
-    unit text,
-    CONSTRAINT production_product_line_qty_check CHECK ((qty > (0)::numeric))
+    unit text
 );
 
 
@@ -369,8 +348,7 @@ CREATE TABLE app.specification (
     product_item_id bigint NOT NULL,
     output_qty numeric(12,3) DEFAULT 1 NOT NULL,
     output_unit text,
-    manufacturer_id text,
-    CONSTRAINT specification_output_qty_check CHECK ((output_qty > (0)::numeric))
+    manufacturer_id text
 );
 
 
@@ -402,8 +380,7 @@ CREATE TABLE app.specification_material (
     specification_id bigint NOT NULL,
     material_item_id bigint NOT NULL,
     qty numeric(12,3) NOT NULL,
-    unit text,
-    CONSTRAINT specification_material_qty_check CHECK ((qty > (0)::numeric))
+    unit text
 );
 
 
@@ -424,6 +401,41 @@ CREATE SEQUENCE app.specification_material_id_seq
 --
 
 ALTER SEQUENCE app.specification_material_id_seq OWNED BY app.specification_material.id;
+
+
+--
+-- Name: users; Type: TABLE; Schema: app; Owner: -
+--
+
+CREATE TABLE app.users (
+    id bigint NOT NULL,
+    login character varying(64) NOT NULL,
+    password_hash character varying(255) NOT NULL,
+    role character varying(16) DEFAULT 'user'::character varying NOT NULL,
+    failed_attempts integer DEFAULT 0 NOT NULL,
+    is_locked boolean DEFAULT false NOT NULL,
+    created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+
+--
+-- Name: users_id_seq; Type: SEQUENCE; Schema: app; Owner: -
+--
+
+CREATE SEQUENCE app.users_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: users_id_seq; Type: SEQUENCE OWNED BY; Schema: app; Owner: -
+--
+
+ALTER SEQUENCE app.users_id_seq OWNED BY app.users.id;
 
 
 --
@@ -504,190 +516,371 @@ ALTER TABLE ONLY app.specification_material ALTER COLUMN id SET DEFAULT nextval(
 
 
 --
+-- Name: users id; Type: DEFAULT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.users ALTER COLUMN id SET DEFAULT nextval('app.users_id_seq'::regclass);
+
+
+--
 -- Data for Name: cost_calculation; Type: TABLE DATA; Schema: app; Owner: -
 --
 
-INSERT INTO app.cost_calculation VALUES (1, '2025-03-15', 2001, 1.000, 0.00);
-INSERT INTO app.cost_calculation VALUES (2, '2025-03-15', 2002, 1.000, 0.00);
+COPY app.cost_calculation (id, calc_date, product_item_id, product_qty, total_cost) FROM stdin;
+1	\N	6	1.000	36.70
+\.
 
 
 --
 -- Data for Name: cost_calculation_line; Type: TABLE DATA; Schema: app; Owner: -
 --
 
+COPY app.cost_calculation_line (id, cost_calculation_id, material_item_id, qty, unit, unit_cost, line_cost) FROM stdin;
+1	1	1	0.900	кг	40.00	36.00
+2	1	2	0.070	кг	10.00	0.70
+\.
 
 
 --
 -- Data for Name: counterparty; Type: TABLE DATA; Schema: app; Owner: -
 --
 
-INSERT INTO app.counterparty VALUES ('000000001', 'ООО "Поставка"', NULL, 'г.Пятигорск', '+79198634592', true, true);
-INSERT INTO app.counterparty VALUES ('000000002', 'ООО "Кинотеатр Квант"', '26320045123', 'г. Железноводск, ул. Мира, 123', '+79884581555', true, false);
-INSERT INTO app.counterparty VALUES ('000000008', 'ООО "Новый JDTO"', '26320045111', 'г. Железноводсу', '+79884581555', true, false);
-INSERT INTO app.counterparty VALUES ('000000003', 'ООО "Ромашка"', '4140784214', 'г. Омск, ул. Строителей, 294', '+79882584546', false, true);
-INSERT INTO app.counterparty VALUES ('000000009', 'ООО "Ипподром"', '5874045632', 'г. Уфа, ул. Набережная,  37', '+79627486389', true, true);
-INSERT INTO app.counterparty VALUES ('000000010', 'ООО "Ассоль"', '2629011278', 'г. Калуга, ул. Пушкина, 94', '+79184572398', false, true);
-
-
---
--- Data for Name: counterparty_import; Type: TABLE DATA; Schema: app; Owner: -
---
-
+COPY app.counterparty (id, name, inn, address, phone, is_salesman, is_buyer) FROM stdin;
+000000001	ООО "Поставка"	\N	г.Пятигорск	+79198634592	t	t
+000000002	ООО "Кинотеатр Квант"	26320045123	г. Железноводск, ул. Мира, 123	+79884581555	t	f
+000000008	ООО "Новый JDTO"	26320045111	г. Железноводсу	+79884581555	t	f
+000000003	ООО "Ромашка"	4140784214	г. Омск, ул. Строителей, 294	+79882584546	f	t
+000000009	ООО "Ипподром"	5874045632	г. Уфа, ул. Набережная,  37	+79627486389	t	t
+000000010	ООО "Ассоль"	2629011278	г. Калуга, ул. Пушкина, 94	+79184572398	f	t
+polese	ООО Молочный комбинат "Полесье"	\N	\N	\N	t	f
+\.
 
 
 --
 -- Data for Name: customer_order; Type: TABLE DATA; Schema: app; Owner: -
 --
 
-INSERT INTO app.customer_order VALUES (1, 'ORD-2025-001', '2025-03-01', '000000001', '000000003', 0.00);
-INSERT INTO app.customer_order VALUES (2, 'ORD-2025-002', '2025-03-05', '000000002', '000000010', 0.00);
-INSERT INTO app.customer_order VALUES (3, 'ORD-2025-003', '2025-03-10', '000000009', '000000001', 0.00);
+COPY app.customer_order (id, doc_no, doc_date, executor_id, customer_id, total_amount) FROM stdin;
+1	2	2025-06-06	polese	000000010	2488.00
+\.
 
 
 --
 -- Data for Name: customer_order_line; Type: TABLE DATA; Schema: app; Owner: -
 --
 
-INSERT INTO app.customer_order_line VALUES (1, 1, 2001, 10.000, 'шт', NULL, NULL);
-INSERT INTO app.customer_order_line VALUES (2, 1, 2002, 5.000, 'шт', NULL, NULL);
-INSERT INTO app.customer_order_line VALUES (3, 2, 2001, 3.000, 'шт', NULL, NULL);
-INSERT INTO app.customer_order_line VALUES (4, 2, 2002, 2.000, 'шт', NULL, NULL);
-INSERT INTO app.customer_order_line VALUES (5, 3, 2001, 7.000, 'шт', NULL, NULL);
-INSERT INTO app.customer_order_line VALUES (6, 3, 2002, 1.000, 'шт', NULL, NULL);
+COPY app.customer_order_line (id, customer_order_id, product_item_id, qty, unit, unit_price, line_amount) FROM stdin;
+1	1	3	12.000	шт	80.00	960.00
+2	1	4	9.000	шт	82.00	738.00
+3	1	5	10.000	шт	79.00	790.00
+\.
 
 
 --
 -- Data for Name: item; Type: TABLE DATA; Schema: app; Owner: -
 --
 
-INSERT INTO app.item VALUES (1001, 'MAT-001', 'Молоко 3.2%', 'material', 'л');
-INSERT INTO app.item VALUES (1002, 'MAT-002', 'Сахар', 'material', 'кг');
-INSERT INTO app.item VALUES (1003, 'MAT-003', 'Какао', 'material', 'кг');
-INSERT INTO app.item VALUES (2001, 'PRD-001', 'Йогурт клубничный', 'product', 'шт');
-INSERT INTO app.item VALUES (2002, 'PRD-002', 'Какао напиток', 'product', 'шт');
+COPY app.item (id, code, name, item_type, unit_default) FROM stdin;
+1	НФ-00000004	Молоко нормализованное	material	кг
+2	НФ-00000005	Закваска сметанная	material	кг
+3	\N	Кефир 2,5% 900г.	product	шт
+4	\N	Кефир 3,2% 900г.	product	шт
+5	\N	Молоко 2,5% 900г.	product	шт
+6	НФ-00000006	Сметана классическая 15% 540г.	product	шт
+7	\N	Молоко 3,2% 900г.	product	\N
+8	\N	Сметана классическая 20% 540г.	product	\N
+\.
 
 
 --
 -- Data for Name: price; Type: TABLE DATA; Schema: app; Owner: -
 --
 
-INSERT INTO app.price VALUES (1, 1001, 80.00, '2025-01-01', NULL);
-INSERT INTO app.price VALUES (2, 1002, 65.00, '2025-01-01', NULL);
-INSERT INTO app.price VALUES (3, 1003, 500.00, '2025-01-01', NULL);
+COPY app.price (id, item_id, price, effective_from, effective_to) FROM stdin;
+1	2	45.00	\N	\N
+2	3	80.00	\N	\N
+3	4	82.00	\N	\N
+4	5	70.00	\N	\N
+5	7	76.00	\N	\N
+6	1	34.00	\N	\N
+7	6	89.00	\N	\N
+8	8	92.00	\N	\N
+\.
 
 
 --
 -- Data for Name: production_material_line; Type: TABLE DATA; Schema: app; Owner: -
 --
 
+COPY app.production_material_line (id, production_order_id, material_item_id, qty, unit) FROM stdin;
+1	1	1	0.900	кг
+2	1	2	0.070	кг
+\.
 
 
 --
 -- Data for Name: production_order; Type: TABLE DATA; Schema: app; Owner: -
 --
 
+COPY app.production_order (id, doc_no, doc_date, manufacturer_id, note) FROM stdin;
+1	1	2025-06-09	polese	\N
+\.
 
 
 --
 -- Data for Name: production_product_line; Type: TABLE DATA; Schema: app; Owner: -
 --
 
+COPY app.production_product_line (id, production_order_id, product_item_id, qty, unit) FROM stdin;
+1	1	6	1.000	шт
+\.
 
 
 --
 -- Data for Name: specification; Type: TABLE DATA; Schema: app; Owner: -
 --
 
-INSERT INTO app.specification VALUES (1, 'Спецификация: Йогурт клубничный', 2001, 1.000, 'шт', NULL);
-INSERT INTO app.specification VALUES (2, 'Спецификация: Какао напиток', 2002, 1.000, 'шт', NULL);
+COPY app.specification (id, name, product_item_id, output_qty, output_unit, manufacturer_id) FROM stdin;
+1	Основная Сметана 15%	6	1.000	шт	polese
+\.
 
 
 --
 -- Data for Name: specification_material; Type: TABLE DATA; Schema: app; Owner: -
 --
 
-INSERT INTO app.specification_material VALUES (1, 1, 1001, 0.250, 'л');
-INSERT INTO app.specification_material VALUES (2, 1, 1002, 0.030, 'кг');
-INSERT INTO app.specification_material VALUES (3, 2, 1001, 0.300, 'л');
-INSERT INTO app.specification_material VALUES (4, 2, 1002, 0.020, 'кг');
-INSERT INTO app.specification_material VALUES (5, 2, 1003, 0.010, 'кг');
+COPY app.specification_material (id, specification_id, material_item_id, qty, unit) FROM stdin;
+1	1	1	0.900	кг
+2	1	2	0.070	кг
+\.
 
 
 --
 -- Name: cost_calculation_id_seq; Type: SEQUENCE SET; Schema: app; Owner: -
 --
 
-SELECT pg_catalog.setval('app.cost_calculation_id_seq', 1, false);
+SELECT pg_catalog.setval('app.cost_calculation_id_seq', 1, true);
 
 
 --
 -- Name: cost_calculation_line_id_seq; Type: SEQUENCE SET; Schema: app; Owner: -
 --
 
-SELECT pg_catalog.setval('app.cost_calculation_line_id_seq', 1, false);
+SELECT pg_catalog.setval('app.cost_calculation_line_id_seq', 2, true);
 
 
 --
 -- Name: customer_order_id_seq; Type: SEQUENCE SET; Schema: app; Owner: -
 --
 
-SELECT pg_catalog.setval('app.customer_order_id_seq', 1, false);
+SELECT pg_catalog.setval('app.customer_order_id_seq', 1, true);
 
 
 --
 -- Name: customer_order_line_id_seq; Type: SEQUENCE SET; Schema: app; Owner: -
 --
 
-SELECT pg_catalog.setval('app.customer_order_line_id_seq', 1, false);
+SELECT pg_catalog.setval('app.customer_order_line_id_seq', 3, true);
 
 
 --
 -- Name: item_id_seq; Type: SEQUENCE SET; Schema: app; Owner: -
 --
 
-SELECT pg_catalog.setval('app.item_id_seq', 1, false);
+SELECT pg_catalog.setval('app.item_id_seq', 8, true);
 
 
 --
 -- Name: price_id_seq; Type: SEQUENCE SET; Schema: app; Owner: -
 --
 
-SELECT pg_catalog.setval('app.price_id_seq', 1, false);
+SELECT pg_catalog.setval('app.price_id_seq', 8, true);
 
 
 --
 -- Name: production_material_line_id_seq; Type: SEQUENCE SET; Schema: app; Owner: -
 --
 
-SELECT pg_catalog.setval('app.production_material_line_id_seq', 1, false);
+SELECT pg_catalog.setval('app.production_material_line_id_seq', 2, true);
 
 
 --
 -- Name: production_order_id_seq; Type: SEQUENCE SET; Schema: app; Owner: -
 --
 
-SELECT pg_catalog.setval('app.production_order_id_seq', 1, false);
+SELECT pg_catalog.setval('app.production_order_id_seq', 1, true);
 
 
 --
 -- Name: production_product_line_id_seq; Type: SEQUENCE SET; Schema: app; Owner: -
 --
 
-SELECT pg_catalog.setval('app.production_product_line_id_seq', 1, false);
+SELECT pg_catalog.setval('app.production_product_line_id_seq', 1, true);
 
 
 --
 -- Name: specification_id_seq; Type: SEQUENCE SET; Schema: app; Owner: -
 --
 
-SELECT pg_catalog.setval('app.specification_id_seq', 1, false);
+SELECT pg_catalog.setval('app.specification_id_seq', 1, true);
 
 
 --
 -- Name: specification_material_id_seq; Type: SEQUENCE SET; Schema: app; Owner: -
 --
 
-SELECT pg_catalog.setval('app.specification_material_id_seq', 1, false);
+SELECT pg_catalog.setval('app.specification_material_id_seq', 2, true);
+
+
+--
+-- Name: users_id_seq; Type: SEQUENCE SET; Schema: app; Owner: -
+--
+
+SELECT pg_catalog.setval('app.users_id_seq', 3, true);
+
+
+--
+-- Name: cost_calculation_line chk_calculation_line_cost; Type: CHECK CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE app.cost_calculation_line
+    ADD CONSTRAINT chk_calculation_line_cost CHECK ((line_cost >= (0)::numeric)) NOT VALID;
+
+
+--
+-- Name: cost_calculation_line chk_calculation_line_qty; Type: CHECK CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE app.cost_calculation_line
+    ADD CONSTRAINT chk_calculation_line_qty CHECK ((qty > (0)::numeric)) NOT VALID;
+
+
+--
+-- Name: cost_calculation_line chk_calculation_line_unit_cost; Type: CHECK CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE app.cost_calculation_line
+    ADD CONSTRAINT chk_calculation_line_unit_cost CHECK ((unit_cost >= (0)::numeric)) NOT VALID;
+
+
+--
+-- Name: cost_calculation chk_calculation_qty; Type: CHECK CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE app.cost_calculation
+    ADD CONSTRAINT chk_calculation_qty CHECK ((product_qty > (0)::numeric)) NOT VALID;
+
+
+--
+-- Name: cost_calculation chk_calculation_total; Type: CHECK CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE app.cost_calculation
+    ADD CONSTRAINT chk_calculation_total CHECK ((total_cost >= (0)::numeric)) NOT VALID;
+
+
+--
+-- Name: customer_order_line chk_customer_line_amount; Type: CHECK CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE app.customer_order_line
+    ADD CONSTRAINT chk_customer_line_amount CHECK ((line_amount >= (0)::numeric)) NOT VALID;
+
+
+--
+-- Name: customer_order_line chk_customer_line_qty; Type: CHECK CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE app.customer_order_line
+    ADD CONSTRAINT chk_customer_line_qty CHECK ((qty > (0)::numeric)) NOT VALID;
+
+
+--
+-- Name: customer_order_line chk_customer_line_unit_price; Type: CHECK CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE app.customer_order_line
+    ADD CONSTRAINT chk_customer_line_unit_price CHECK ((unit_price >= (0)::numeric)) NOT VALID;
+
+
+--
+-- Name: item chk_item_type; Type: CHECK CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE app.item
+    ADD CONSTRAINT chk_item_type CHECK ((item_type = ANY (ARRAY['product'::text, 'material'::text]))) NOT VALID;
+
+
+--
+-- Name: customer_order chk_order_total; Type: CHECK CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE app.customer_order
+    ADD CONSTRAINT chk_order_total CHECK ((total_amount >= (0)::numeric)) NOT VALID;
+
+
+--
+-- Name: price chk_price_dates; Type: CHECK CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE app.price
+    ADD CONSTRAINT chk_price_dates CHECK (((effective_to IS NULL) OR (effective_from IS NULL) OR (effective_to >= effective_from))) NOT VALID;
+
+
+--
+-- Name: price chk_price_nonnegative; Type: CHECK CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE app.price
+    ADD CONSTRAINT chk_price_nonnegative CHECK ((price >= (0)::numeric)) NOT VALID;
+
+
+--
+-- Name: production_material_line chk_production_material_qty; Type: CHECK CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE app.production_material_line
+    ADD CONSTRAINT chk_production_material_qty CHECK ((qty > (0)::numeric)) NOT VALID;
+
+
+--
+-- Name: production_product_line chk_production_product_qty; Type: CHECK CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE app.production_product_line
+    ADD CONSTRAINT chk_production_product_qty CHECK ((qty > (0)::numeric)) NOT VALID;
+
+
+--
+-- Name: specification_material chk_specification_material_qty; Type: CHECK CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE app.specification_material
+    ADD CONSTRAINT chk_specification_material_qty CHECK ((qty > (0)::numeric)) NOT VALID;
+
+
+--
+-- Name: specification chk_specification_output; Type: CHECK CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE app.specification
+    ADD CONSTRAINT chk_specification_output CHECK ((output_qty > (0)::numeric)) NOT VALID;
+
+
+--
+-- Name: users chk_users_failed_attempts; Type: CHECK CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE app.users
+    ADD CONSTRAINT chk_users_failed_attempts CHECK ((failed_attempts >= 0)) NOT VALID;
+
+
+--
+-- Name: users chk_users_role; Type: CHECK CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE app.users
+    ADD CONSTRAINT chk_users_role CHECK (((role)::text = ANY ((ARRAY['admin'::character varying, 'user'::character varying])::text[]))) NOT VALID;
 
 
 --
@@ -728,14 +921,6 @@ ALTER TABLE ONLY app.customer_order_line
 
 ALTER TABLE ONLY app.customer_order
     ADD CONSTRAINT customer_order_pkey PRIMARY KEY (id);
-
-
---
--- Name: item item_code_key; Type: CONSTRAINT; Schema: app; Owner: -
---
-
-ALTER TABLE ONLY app.item
-    ADD CONSTRAINT item_code_key UNIQUE (code);
 
 
 --
@@ -795,158 +980,176 @@ ALTER TABLE ONLY app.specification
 
 
 --
--- Name: specification_material uq_spec_material; Type: CONSTRAINT; Schema: app; Owner: -
+-- Name: item uq_item_code; Type: CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.item
+    ADD CONSTRAINT uq_item_code UNIQUE (code);
+
+
+--
+-- Name: specification_material uq_specification_material; Type: CONSTRAINT; Schema: app; Owner: -
 --
 
 ALTER TABLE ONLY app.specification_material
-    ADD CONSTRAINT uq_spec_material UNIQUE (specification_id, material_item_id);
+    ADD CONSTRAINT uq_specification_material UNIQUE (specification_id, material_item_id);
 
 
 --
--- Name: idx_price_item; Type: INDEX; Schema: app; Owner: -
+-- Name: users uq_users_login; Type: CONSTRAINT; Schema: app; Owner: -
 --
 
-CREATE INDEX idx_price_item ON app.price USING btree (item_id);
+ALTER TABLE ONLY app.users
+    ADD CONSTRAINT uq_users_login UNIQUE (login);
 
 
 --
--- Name: cost_calculation_line cost_calculation_line_cost_calculation_id_fkey; Type: FK CONSTRAINT; Schema: app; Owner: -
+-- Name: users users_pkey; Type: CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.users
+    ADD CONSTRAINT users_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: cost_calculation_line fk_cost_calculation_line_cost_calculation_id; Type: FK CONSTRAINT; Schema: app; Owner: -
 --
 
 ALTER TABLE ONLY app.cost_calculation_line
-    ADD CONSTRAINT cost_calculation_line_cost_calculation_id_fkey FOREIGN KEY (cost_calculation_id) REFERENCES app.cost_calculation(id) ON UPDATE CASCADE ON DELETE CASCADE;
+    ADD CONSTRAINT fk_cost_calculation_line_cost_calculation_id FOREIGN KEY (cost_calculation_id) REFERENCES app.cost_calculation(id) ON UPDATE CASCADE ON DELETE CASCADE NOT VALID;
 
 
 --
--- Name: cost_calculation_line cost_calculation_line_material_item_id_fkey; Type: FK CONSTRAINT; Schema: app; Owner: -
+-- Name: cost_calculation_line fk_cost_calculation_line_material_item_id; Type: FK CONSTRAINT; Schema: app; Owner: -
 --
 
 ALTER TABLE ONLY app.cost_calculation_line
-    ADD CONSTRAINT cost_calculation_line_material_item_id_fkey FOREIGN KEY (material_item_id) REFERENCES app.item(id) ON UPDATE CASCADE ON DELETE RESTRICT;
+    ADD CONSTRAINT fk_cost_calculation_line_material_item_id FOREIGN KEY (material_item_id) REFERENCES app.item(id) ON UPDATE CASCADE ON DELETE RESTRICT NOT VALID;
 
 
 --
--- Name: cost_calculation cost_calculation_product_item_id_fkey; Type: FK CONSTRAINT; Schema: app; Owner: -
+-- Name: cost_calculation fk_cost_calculation_product_item_id; Type: FK CONSTRAINT; Schema: app; Owner: -
 --
 
 ALTER TABLE ONLY app.cost_calculation
-    ADD CONSTRAINT cost_calculation_product_item_id_fkey FOREIGN KEY (product_item_id) REFERENCES app.item(id) ON UPDATE CASCADE ON DELETE RESTRICT;
+    ADD CONSTRAINT fk_cost_calculation_product_item_id FOREIGN KEY (product_item_id) REFERENCES app.item(id) ON UPDATE CASCADE ON DELETE RESTRICT NOT VALID;
 
 
 --
--- Name: customer_order customer_order_customer_id_fkey; Type: FK CONSTRAINT; Schema: app; Owner: -
---
-
-ALTER TABLE ONLY app.customer_order
-    ADD CONSTRAINT customer_order_customer_id_fkey FOREIGN KEY (customer_id) REFERENCES app.counterparty(id) ON UPDATE CASCADE ON DELETE RESTRICT;
-
-
---
--- Name: customer_order customer_order_executor_id_fkey; Type: FK CONSTRAINT; Schema: app; Owner: -
+-- Name: customer_order fk_customer_order_customer_id; Type: FK CONSTRAINT; Schema: app; Owner: -
 --
 
 ALTER TABLE ONLY app.customer_order
-    ADD CONSTRAINT customer_order_executor_id_fkey FOREIGN KEY (executor_id) REFERENCES app.counterparty(id) ON UPDATE CASCADE ON DELETE RESTRICT;
+    ADD CONSTRAINT fk_customer_order_customer_id FOREIGN KEY (customer_id) REFERENCES app.counterparty(id) ON UPDATE CASCADE ON DELETE RESTRICT NOT VALID;
 
 
 --
--- Name: customer_order_line customer_order_line_customer_order_id_fkey; Type: FK CONSTRAINT; Schema: app; Owner: -
+-- Name: customer_order fk_customer_order_executor_id; Type: FK CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.customer_order
+    ADD CONSTRAINT fk_customer_order_executor_id FOREIGN KEY (executor_id) REFERENCES app.counterparty(id) ON UPDATE CASCADE ON DELETE RESTRICT NOT VALID;
+
+
+--
+-- Name: customer_order_line fk_customer_order_line_customer_order_id; Type: FK CONSTRAINT; Schema: app; Owner: -
 --
 
 ALTER TABLE ONLY app.customer_order_line
-    ADD CONSTRAINT customer_order_line_customer_order_id_fkey FOREIGN KEY (customer_order_id) REFERENCES app.customer_order(id) ON UPDATE CASCADE ON DELETE CASCADE;
+    ADD CONSTRAINT fk_customer_order_line_customer_order_id FOREIGN KEY (customer_order_id) REFERENCES app.customer_order(id) ON UPDATE CASCADE ON DELETE CASCADE NOT VALID;
 
 
 --
--- Name: customer_order_line customer_order_line_product_item_id_fkey; Type: FK CONSTRAINT; Schema: app; Owner: -
+-- Name: customer_order_line fk_customer_order_line_product_item_id; Type: FK CONSTRAINT; Schema: app; Owner: -
 --
 
 ALTER TABLE ONLY app.customer_order_line
-    ADD CONSTRAINT customer_order_line_product_item_id_fkey FOREIGN KEY (product_item_id) REFERENCES app.item(id) ON UPDATE CASCADE ON DELETE RESTRICT;
+    ADD CONSTRAINT fk_customer_order_line_product_item_id FOREIGN KEY (product_item_id) REFERENCES app.item(id) ON UPDATE CASCADE ON DELETE RESTRICT NOT VALID;
 
 
 --
--- Name: price price_item_id_fkey; Type: FK CONSTRAINT; Schema: app; Owner: -
+-- Name: price fk_price_item; Type: FK CONSTRAINT; Schema: app; Owner: -
 --
 
 ALTER TABLE ONLY app.price
-    ADD CONSTRAINT price_item_id_fkey FOREIGN KEY (item_id) REFERENCES app.item(id) ON UPDATE CASCADE ON DELETE RESTRICT;
+    ADD CONSTRAINT fk_price_item FOREIGN KEY (item_id) REFERENCES app.item(id) ON UPDATE CASCADE ON DELETE RESTRICT NOT VALID;
 
 
 --
--- Name: production_material_line production_material_line_material_item_id_fkey; Type: FK CONSTRAINT; Schema: app; Owner: -
---
-
-ALTER TABLE ONLY app.production_material_line
-    ADD CONSTRAINT production_material_line_material_item_id_fkey FOREIGN KEY (material_item_id) REFERENCES app.item(id) ON UPDATE CASCADE ON DELETE RESTRICT;
-
-
---
--- Name: production_material_line production_material_line_production_order_id_fkey; Type: FK CONSTRAINT; Schema: app; Owner: -
+-- Name: production_material_line fk_production_material_line_material_item_id; Type: FK CONSTRAINT; Schema: app; Owner: -
 --
 
 ALTER TABLE ONLY app.production_material_line
-    ADD CONSTRAINT production_material_line_production_order_id_fkey FOREIGN KEY (production_order_id) REFERENCES app.production_order(id) ON UPDATE CASCADE ON DELETE CASCADE;
+    ADD CONSTRAINT fk_production_material_line_material_item_id FOREIGN KEY (material_item_id) REFERENCES app.item(id) ON UPDATE CASCADE ON DELETE RESTRICT NOT VALID;
 
 
 --
--- Name: production_order production_order_manufacturer_id_fkey; Type: FK CONSTRAINT; Schema: app; Owner: -
+-- Name: production_material_line fk_production_material_line_production_order_id; Type: FK CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.production_material_line
+    ADD CONSTRAINT fk_production_material_line_production_order_id FOREIGN KEY (production_order_id) REFERENCES app.production_order(id) ON UPDATE CASCADE ON DELETE CASCADE NOT VALID;
+
+
+--
+-- Name: production_order fk_production_order_manufacturer_id; Type: FK CONSTRAINT; Schema: app; Owner: -
 --
 
 ALTER TABLE ONLY app.production_order
-    ADD CONSTRAINT production_order_manufacturer_id_fkey FOREIGN KEY (manufacturer_id) REFERENCES app.counterparty(id) ON UPDATE CASCADE ON DELETE RESTRICT;
+    ADD CONSTRAINT fk_production_order_manufacturer_id FOREIGN KEY (manufacturer_id) REFERENCES app.counterparty(id) ON UPDATE CASCADE ON DELETE RESTRICT NOT VALID;
 
 
 --
--- Name: production_product_line production_product_line_product_item_id_fkey; Type: FK CONSTRAINT; Schema: app; Owner: -
---
-
-ALTER TABLE ONLY app.production_product_line
-    ADD CONSTRAINT production_product_line_product_item_id_fkey FOREIGN KEY (product_item_id) REFERENCES app.item(id) ON UPDATE CASCADE ON DELETE RESTRICT;
-
-
---
--- Name: production_product_line production_product_line_production_order_id_fkey; Type: FK CONSTRAINT; Schema: app; Owner: -
+-- Name: production_product_line fk_production_product_line_product_item_id; Type: FK CONSTRAINT; Schema: app; Owner: -
 --
 
 ALTER TABLE ONLY app.production_product_line
-    ADD CONSTRAINT production_product_line_production_order_id_fkey FOREIGN KEY (production_order_id) REFERENCES app.production_order(id) ON UPDATE CASCADE ON DELETE CASCADE;
+    ADD CONSTRAINT fk_production_product_line_product_item_id FOREIGN KEY (product_item_id) REFERENCES app.item(id) ON UPDATE CASCADE ON DELETE RESTRICT NOT VALID;
 
 
 --
--- Name: specification specification_manufacturer_id_fkey; Type: FK CONSTRAINT; Schema: app; Owner: -
+-- Name: production_product_line fk_production_product_line_production_order_id; Type: FK CONSTRAINT; Schema: app; Owner: -
 --
 
-ALTER TABLE ONLY app.specification
-    ADD CONSTRAINT specification_manufacturer_id_fkey FOREIGN KEY (manufacturer_id) REFERENCES app.counterparty(id) ON UPDATE CASCADE ON DELETE RESTRICT;
-
-
---
--- Name: specification_material specification_material_material_item_id_fkey; Type: FK CONSTRAINT; Schema: app; Owner: -
---
-
-ALTER TABLE ONLY app.specification_material
-    ADD CONSTRAINT specification_material_material_item_id_fkey FOREIGN KEY (material_item_id) REFERENCES app.item(id) ON UPDATE CASCADE ON DELETE RESTRICT;
+ALTER TABLE ONLY app.production_product_line
+    ADD CONSTRAINT fk_production_product_line_production_order_id FOREIGN KEY (production_order_id) REFERENCES app.production_order(id) ON UPDATE CASCADE ON DELETE CASCADE NOT VALID;
 
 
 --
--- Name: specification_material specification_material_specification_id_fkey; Type: FK CONSTRAINT; Schema: app; Owner: -
---
-
-ALTER TABLE ONLY app.specification_material
-    ADD CONSTRAINT specification_material_specification_id_fkey FOREIGN KEY (specification_id) REFERENCES app.specification(id) ON UPDATE CASCADE ON DELETE CASCADE;
-
-
---
--- Name: specification specification_product_item_id_fkey; Type: FK CONSTRAINT; Schema: app; Owner: -
+-- Name: specification fk_specification_manufacturer_id; Type: FK CONSTRAINT; Schema: app; Owner: -
 --
 
 ALTER TABLE ONLY app.specification
-    ADD CONSTRAINT specification_product_item_id_fkey FOREIGN KEY (product_item_id) REFERENCES app.item(id) ON UPDATE CASCADE ON DELETE RESTRICT;
+    ADD CONSTRAINT fk_specification_manufacturer_id FOREIGN KEY (manufacturer_id) REFERENCES app.counterparty(id) ON UPDATE CASCADE ON DELETE RESTRICT NOT VALID;
+
+
+--
+-- Name: specification_material fk_specification_material_material_item_id; Type: FK CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.specification_material
+    ADD CONSTRAINT fk_specification_material_material_item_id FOREIGN KEY (material_item_id) REFERENCES app.item(id) ON UPDATE CASCADE ON DELETE RESTRICT NOT VALID;
+
+
+--
+-- Name: specification_material fk_specification_material_specification_id; Type: FK CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.specification_material
+    ADD CONSTRAINT fk_specification_material_specification_id FOREIGN KEY (specification_id) REFERENCES app.specification(id) ON UPDATE CASCADE ON DELETE CASCADE NOT VALID;
+
+
+--
+-- Name: specification fk_specification_product_item_id; Type: FK CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.specification
+    ADD CONSTRAINT fk_specification_product_item_id FOREIGN KEY (product_item_id) REFERENCES app.item(id) ON UPDATE CASCADE ON DELETE RESTRICT NOT VALID;
 
 
 --
 -- PostgreSQL database dump complete
 --
 
+\unrestrict CEoNn8CaxkHCCjd3z4BElZb2jtoWF4dKzO28fTyLx5tsAeB5Bv23Ijmw9vkoy4O
 

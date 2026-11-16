@@ -46,8 +46,12 @@ public sealed class AuthService
 
         if (!captchaOk || !_pwd.Verify(password, user.PasswordHash))
         {
+            // Пароль и пазл учитываются одним счётчиком. Третья ошибка сразу возвращает блокировку.
             await _repo.IncrementFailedAttemptsAndLockIfNeededAsync(user.Id);
-            return (false, InvalidMsg, user);
+            var updated = await _repo.GetByLoginAsync(login);
+            if (updated?.IsLocked == true)
+                return (false, LockedMsg, null);
+            return (false, captchaOk ? InvalidMsg : "Соберите изображение для подтверждения.", null);
         }
 
         await _repo.ResetFailedAttemptsAsync(user.Id);

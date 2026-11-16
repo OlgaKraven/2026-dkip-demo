@@ -1,7 +1,8 @@
 (() => {
   'use strict';
-  const deck=TEACHER_DECK, esc=ExamCore.escape, by=id=>document.getElementById(id);
   const params=new URLSearchParams(location.search), preview=params.has('preview');
+  const deck=params.get('stack')==='postgresql'?TEACHER_DECKS.postgresql:TEACHER_DECKS.mysql;
+  const esc=ExamCore.escape, by=id=>document.getElementById(id);
   const prefix=preview?'dkip2026-mock-preview:':'dkip2026-basic-v1:';
   const profileKeys=['name','position','department'];
   const profileLabels=['ФИО преподавателя','Должность','Кафедра / лаборатория'];

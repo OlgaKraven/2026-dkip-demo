@@ -1,232 +1,150 @@
-# Модуль 4. Разработка информационной системы
+# Задание 4. Авторизация через конструктор Windows Forms и PostgreSQL
 
-## 1. Доработка БД: таблица `app.users` и ограничения
+## Создайте таблицу app.users в pgAdmin
 
-### 1.1. Создаём таблицу пользователей
+Используйте базу `dairy_demo` из задания 3. Откройте **Schemas → app → Tables → Create → Table…**. На вкладке **General** введите `users`. Проверьте **Schema = app**. На вкладке **Columns** добавьте восемь полей.
 
-Рекомендую хранить:
+| Имя | Data type | Length/Precision | Обязательное | Default |
+|---|---|---:|---|---|
+| `id` | bigserial | — | Primary key? | — |
+| `login` | character varying | 64 | Not NULL? | — |
+| `password_hash` | character varying | 255 | Not NULL? | — |
+| `role` | character varying | 16 | Not NULL? | `'user'` |
+| `failed_attempts` | integer | — | Not NULL? | `0` |
+| `is_locked` | boolean | — | Not NULL? | `false` |
+| `created_at` | timestamp with time zone | — | Not NULL? | `CURRENT_TIMESTAMP` |
+| `updated_at` | timestamp with time zone | — | Not NULL? | `CURRENT_TIMESTAMP` |
 
-* `login` (уникальный),
-* `password_hash` (хэш пароля, не хранить пароль в открытом виде),
-* `role` (`admin`/`user`),
-* `is_locked` и счётчик `failed_attempts` (3 подряд — блок),
-* метки времени для аудита.
+Сохраните таблицу. Через **Properties… → Constraints → Unique → +** добавьте ограничение `uq_users_login`. Во вложенной вкладке **Definition** для **Columns** выберите `login`.
 
-```sql
--- schema: app (как у вас)
-create table if not exists app.users (
-    id              bigserial primary key,
-    login           text not null unique,
-    password_hash   text not null,
-    role            text not null check (role in ('admin', 'user')),
-    failed_attempts int not null default 0 check (failed_attempts >= 0),
-    is_locked       boolean not null default false,
-    created_at      timestamptz not null default now(),
-    updated_at      timestamptz not null default now()
-);
-
-create index if not exists ix_users_login on app.users (login);
-```
-
-### 1.2. Триггер на `updated_at` (по желанию, но удобно)
+Во вкладке **Check** добавьте `chk_users_role`, чтобы хранить только две разрешённые роли. В поле **Check** вставьте выражение.
 
 ```sql
-create or replace function app.set_updated_at()
-returns trigger as $$
-begin
-  new.updated_at = now();
-  return new;
-end;
-$$ language plpgsql;
-
-drop trigger if exists trg_users_updated_at on app.users;
-
-create trigger trg_users_updated_at
-before update on app.users
-for each row execute function app.set_updated_at();
+role IN ('admin', 'user')
 ```
 
----
+Добавьте `chk_users_failed_attempts`. Счётчик начинается с нуля и увеличивается только при ошибке.
 
-## Учебные учётные записи
-
-[Скачайте SQL для учебных пользователей](../assets/files/demo-users.sql) и выполните его в учебной базе после М2. Скрипт создаёт таблицу при первом запуске и добавляет две записи с BCrypt-хэшами.
-
-| Логин | Пароль для учебной базы | Роль |
-|---|---|---|
-| `DemoAdmin` | `DkipAdmin2026!` | Администратор |
-| `DemoUser` | `DkipUser2026!` | Пользователь |
-
-Откройте `DairyDemo.Auth.sln` в Visual Studio 2026 с рабочей нагрузкой **Разработка классических приложений .NET**. В `Launch/db-connection.txt` проверьте сервер, порт, имя базы и пользователя. После `Password=` укажите пароль PostgreSQL, который используете в pgAdmin. Этот файл используется при запуске EXE и сборке из Visual Studio.
-
-В готовом архиве импортируйте `SQL/dairy_demo.sql` в пустую базу через **Query Tool → Open File → Execute**. В файле уже есть данные и обе учебные учётные записи.
-
----
-
-## 3. Архитектура WinForms-проекта (минимально, но чисто)
-
-### 3.1. Создать проект
-
-* Visual Studio 2026 → **Windows Forms App (.NET)** → **.NET 10**
-* Имя: `DairyDemo.Auth` (или под ваш проект)
-
-### 3.2. NuGet пакеты
-
-Обязательно:
-
-* `Npgsql` (драйвер PostgreSQL)
-* `BCrypt.Net-Next` (безопасный хэш паролей)
-
-Опционально:
-
-* `Dapper` (если хотите проще SQL-доступ, чем DataReader вручную)
-
----
-
-### 3.3. Структура проекта (как должно лежать)
-
-```
-DairyDemo.Auth/
-  Program.cs
-  Assets/
-    captcha/
-        1.png
-        2.png
-        3.png
-        4.png
-  Data/
-    Db.cs
-    Models/
-      User.cs
-    Repositories/
-      UserRepository.cs
-
-  Services/
-    AuthService.cs
-    PasswordService.cs
-
-  UI/
-    Controls/
-      CaptchaPuzzleControl.cs
-      CaptchaPuzzleControl.Designer.cs  (можно не создавать вручную)
-    Forms/
-      LoginForm.cs
-      LoginForm.Designer.cs             (можно не создавать вручную)
-      AdminForm.cs
-      AdminForm.Designer.cs             (можно не создавать вручную)
-      UserForm.cs
-      UserForm.Designer.cs              (можно не создавать вручную)
+```sql
+failed_attempts >= 0
 ```
 
-**Важно про Designer-файлы:**
-WinForms обычно генерирует их сам через визуальный конструктор. Все элементы в папке форма создается через WindowsForm.
+Нажмите **Save**. В свойствах проверьте первичный и уникальный ключи. В **View/Edit Data → All Rows** таблица пока пуста. Программа добавит первого администратора при запуске.
 
+![Столбцы таблицы app.users в pgAdmin](../../assets/images/preparation/postgres-m4-users.png)
 
-   ![Структура проекта ](../assets/images/28.png)
+Пароль хранится как хеш BCrypt, флаг `is_locked` сохраняется после закрытия программы. Время изменения `updated_at` обновляется SQL-запросами при редактировании записи, входе и снятии блокировки.
 
-   /// caption
-   Рисунок  1 – Структура проекта 
-   ///
+## Создайте решение и подключите библиотеки
 
+Запустите Visual Studio 2026. Выберите шаблон **Приложение Windows Forms (Майкрософт)** с меткой **C#**. Имя проекта `DairyDemo.Auth`, платформа **.NET 10.0**. Visual Studio создаст решение и стандартную форму.
 
-> Картинки беруться из архива и для них потребуются дополнительные настройки см. пункт 4.1.
+Положите сохранённые на этапе 0 `NuGet.Config` и папку `nuget-packages` рядом с файлом решения. Если решение уже открыто, закройте и снова откройте его, чтобы Visual Studio перечитала конфигурацию. Выберите проект → **Проект → Управление пакетами NuGet**. Из источника **DKIP offline** установите `Npgsql 10.0.1` и `BCrypt.Net-Next 4.0.3`. Нажмите **Сохранить всё**. На вкладке **Установлено** проверьте обе версии.
 
----
+## Добавьте четыре формы в папку Forms
 
-## 4.  Работа с проектом 
+В **Обозревателе решений** выделите проект. В верхнем меню выберите **Проект → Создать папку** и назовите её `Forms`. Выделите папку и выберите **Проект → Добавить форму (Windows Forms)**. В поле **Имя** введите `LoginForm.cs` и нажмите **Добавить**. Тем же способом создайте `UserForm.cs`, `AdminForm.cs` и `UserEditForm.cs`. Если форма добавилась с временным именем, нажмите **F2** на её файле и подтвердите переименование ссылок на класс.
 
-### 4.1. Настройка картинок 
+Чтобы открыть визуальный редактор, дважды щёлкните по файлу формы. Откройте **Панель элементов** через **Ctrl+Alt+X** и ищите контрол по названию. Дважды щёлкните по найденному контролу. Он появится на выбранной форме. В окне **Свойства** (**F4**) установите `(Name)`, `Text`, `Location` и `Size` по следующим карточкам. Координаты считаются от левого верхнего угла клиентской области.
 
-Для **каждого файла** `1.png`, `2.png`, `3.png`, `4.png`:
+Visual Studio запишет размещение в `*.Designer.cs`. Код логики добавляется в файл без `.Designer` в имени. Каждый контрол с именем из таблицы используется обработчиком. Сверьте буквы и цифры в `(Name)` перед переходом к коду.
 
-1. Клик правой кнопкой → **Properties**
-2. Установить:
+## Соберите LoginForm
 
-| Свойство                     | Значение                            |
-| ---------------------------- | ----------------------------------- |
-| **Build Action**             | `Content` или `Содержимое`                           |
-| **Copy to Output Directory** | `Copy if newer`  или `Копировать всегда` |
+На пустой области формы выберите `Text = Молочный комбинат «Полесье» — вход`, `Size = 730 × 438`, `MinimumSize = 730 × 438`, `FormBorderStyle = FixedDialog`, `MaximizeBox = False` и `StartPosition = CenterScreen`. После добавления кнопки установите `AcceptButton = btnLogin`, чтобы срабатывал Enter.
 
-! Повторить для всех четырёх PNG.
+| Контрол | (Name) | X, Y | Размер или свойство |
+|---|---|---|---|
+| Label | `lblCompany` | 35, 24 | Text = Молочный комбинат «Полесье», Font = Segoe UI 16 pt жирный |
+| Label | `lblLogin` | 35, 101 | Text = Логин |
+| TextBox | `tbLogin` | 35, 124 | 250 × 23, MaxLength = 64 |
+| Label | `lblPassword` | 35, 161 | Text = Пароль |
+| TextBox | `tbPassword` | 35, 184 | 250 × 23, UseSystemPasswordChar = True |
+| Button | `btnLogin` | 35, 243 | 155 × 35, Text = Войти |
+| Label | `lblPuzzle` | 337, 47 | Text = Соберите пазл. Щёлкните по двум фрагментам. |
+| PictureBox | `piece1` | 337, 76 | 156 × 156, SizeMode = Zoom, BorderStyle = FixedSingle |
+| PictureBox | `piece2` | 497, 76 | те же свойства |
+| PictureBox | `piece3` | 337, 236 | те же свойства |
+| PictureBox | `piece4` | 497, 236 | те же свойства |
 
----
+Добавьте поля в порядке логин, пароль, кнопка. Если меняли порядок, сверьте `TabIndex` в окне свойств. Поле пароля маскирует ввод. Четыре `PictureBox` одинакового размера образуют пазл 2 × 2.
 
-### 4.2. Вывод и копирование хэша пароля с использованием TextBox
+![Форма входа в конструкторе Visual Studio](../../assets/images/preparation/postgres-m4-login-designer.png)
 
-В процессе администрирования пользователей может возникнуть необходимость получить значение хэша пароля для последующего использования (например, для обновления данных в базе данных через SQL-запрос или включения в отчёт). 
-Использование стандартного окна `MessageBox` или `Console.WriteLine()` не позволяет выделять и копировать текст, поэтому для этих целей применяется временная форма с многострочным элементом управления `TextBox`.
+## Соберите UserForm
 
-#### Реализация временной формы для отображения хэша пароля
+Поставьте заголовок **Молочный комбинат «Полесье» — пользователь**. Размер и минимальный размер 500 × 220. `FormBorderStyle = FixedDialog`, `MaximizeBox = False`, `StartPosition = CenterScreen`.
 
-При генерации хэша пароля (например, с использованием алгоритма BCrypt) значение выводится в текстовое поле, доступное для копирования:
+| Контрол | (Name) | X, Y | Свойства |
+|---|---|---|---|
+| Label | `lblWelcome` | 27, 32 | Text = Вы вошли в систему. Роль: Пользователь., Font = Segoe UI 12 pt |
+| Button | `btnExit` | 27, 103 | 150 × 34, Text = Выйти |
+
+Окно показывает роль и кнопку возвращения к экрану входа. Текст метки обновится после входа под конкретным логином.
+
+![Окно пользователя в конструкторе Visual Studio](../../assets/images/preparation/postgres-m4-user-designer.png)
+
+## Соберите AdminForm
+
+Заголовок формы **Молочный комбинат «Полесье» — администратор**. Размер 860 × 505, минимальный размер 780 × 480, `StartPosition = CenterScreen`, `FormBorderStyle = Sizable`.
+
+| Контрол | (Name) | X, Y | Размер | Текст |
+|---|---|---|---|---|
+| Button | `btnAdd` | 20, 25 | 120 × 34 | Добавить |
+| Button | `btnEdit` | 154, 25 | 120 × 34 | Изменить |
+| Button | `btnUnlock` | 288, 25 | 158 × 34 | Снять блокировку |
+| Button | `btnClose` | 704, 25 | 115 × 34 | Выйти |
+| DataGridView | `gridUsers` | 20, 83 | 810 × 355 | |
+
+Для `btnClose` привяжите `Anchor` к верхнему и правому краям. Для `gridUsers` отметьте все четыре края в `Anchor`, чтобы она меняла размер вместе с окном. Поставьте `AutoSizeColumnsMode = Fill`, `ReadOnly = True`, `SelectionMode = FullRowSelect`, `MultiSelect = False`, `AllowUserToAddRows = False` и `AllowUserToDeleteRows = False`. Таблица показывает одну выбранную запись, а изменение происходит через отдельную форму с проверкой полей.
+
+![Окно администратора в конструкторе Visual Studio](../../assets/images/preparation/postgres-m4-admin-designer.png)
+
+## Соберите UserEditForm
+
+Выберите размер и минимальный размер 470 × 312, `FormBorderStyle = FixedDialog`, `MaximizeBox = False`, `StartPosition = CenterParent` и заголовок **Полесье — учётная запись**.
+
+| Контрол | (Name) | X, Y | Размер или свойство |
+|---|---|---|---|
+| Label | `lblEditLogin` | 24, 19 | Text = Логин |
+| TextBox | `tbEditLogin` | 24, 41 | 380 × 23, MaxLength = 64 |
+| Label | `lblEditPassword` | 24, 80 | Text = Пароль |
+| TextBox | `tbEditPassword` | 24, 102 | 380 × 23, UseSystemPasswordChar = True |
+| Label | `lblRole` | 24, 141 | Text = Роль |
+| ComboBox | `cbRole` | 24, 163 | 380 × 23, DropDownStyle = DropDownList |
+| Button | `btnSave` | 24, 215 | 130 × 34, Text = Сохранить |
+| Button | `btnCancel` | 169, 215 | 130 × 34, Text = Отмена, DialogResult = Cancel |
+
+Закрытый список `DropDownList` исключает ввод произвольной роли. Код диалога заполнит его двумя разрешёнными ролями. У формы задайте `AcceptButton = btnSave` и `CancelButton = btnCancel`. Один диалог будет использоваться для первого администратора, добавления и редактирования.
+
+![Диалог учётной записи в конструкторе Visual Studio](../../assets/images/preparation/postgres-m4-edit-designer.png)
+
+## Добавьте фрагменты пазла и параметры БД
+
+Распакуйте приложение к заданию 4. В проекте через **Проект → Создать папку** создайте `Assets`, в ней — `captcha`. Скопируйте в неё `1.png`, `2.png`, `3.png` и `4.png` из приложения к КОД. Для файлов в **Свойствах** установите **Действие при сборке → Содержимое** и **Копировать в выходной каталог → Копировать более позднюю версию**. После компиляции должны появиться `bin/Debug/net10.0-windows/Assets/captcha/1.png` и остальные три файла.
+
+В корне проекта создайте текстовый файл `db-connection.txt`. Впишите строку подключения для своей установки. Пример для локального PostgreSQL на стандартном порту. Подставьте свои реквизиты.
+
+```text
+Host=127.0.0.1;Port=5432;Database=dairy_demo;Username=postgres;Password=ВАШ_ПАРОЛЬ;Timeout=5;
+```
+
+Если на вашем компьютере другие параметры, подставьте фактические сервер, порт, пользователя и пароль. Для файла также выберите **Содержимое** и **Копировать более позднюю версию**. При сдаче добавьте пользователю инструкцию заполнения, а личный пароль храните локально.
+
+## Добавьте модель и подключение
+
+Выделите корень проекта и создайте в нём папку `Data`. Для каждого файла выберите папку → **Проект → Добавить класс** и введите имя. Вставьте код в созданный файл и сохраните. `User` описывает одну запись, `Db` читает настройки рядом с EXE. Подключение к PostgreSQL создаётся заново для каждой операции и закрывается после неё.
+
+### Data/User.cs
 
 ```csharp
-var hash = BCrypt.Net.BCrypt.HashPassword("admin");
+namespace DairyDemo.Auth.Data;
 
-var tb = new TextBox
-{
-    Multiline = true,
-    ReadOnly = true,
-    Dock = DockStyle.Fill,
-    Text = hash
-};
-
-var form = new Form
-{
-    Text = "Хэш пароля",
-    Width = 600,
-    Height = 200,
-    StartPosition = FormStartPosition.CenterScreen
-};
-
-form.Controls.Add(tb);
-form.ShowDialog();
-
+public sealed record User(long Id, string Login, string PasswordHash, string Role,
+    int FailedAttempts, bool IsLocked);
 ```
 
-В открывшемся окне пользователь может выделить текст хэша пароля и скопировать его в буфер обмена стандартными средствами операционной системы.
-
-#### Использование хэша пароля для обновления данных в базе данных
-
-Скопированный хэш пароля применяется для обновления записи пользователя в таблице `users` базы данных PostgreSQL. Также одновременно выполняется сброс счётчика неудачных попыток входа и снятие блокировки учётной записи.
-
-Пример SQL-запроса:
-
-```sql
-update app.users
-set password_hash = '<ВСТАВЬТЕ_ХЭШ>',
-    failed_attempts = 0,
-    is_locked = false
-where login = 'Admin';
-```
-
-Данный запрос:
-
-* устанавливает корректный BCrypt-хэш пароля;
-* сбрасывает количество неудачных попыток входа;
-* снимает блокировку учётной записи администратора.
-
-После выполнения запроса пользователь `Admin` cможет успешно пройти аутентификацию в приложении.
-
- 
----
-
-
-### 4.3. Data: `Data/Db.cs`
-
-Для централизованного и унифицированного доступа к базе данных PostgreSQL в проекте используется отдельный статический класс `Db`, расположенный в пространстве имён `DairyDemo.Auth.Data`.
-
-Данный класс инкапсулирует параметры подключения к СУБД и предоставляет единый метод для создания соединения, что упрощает сопровождение кода и исключает дублирование строки подключения в различных частях приложения.
-
-
-#### Назначение класса `Db`
-
-Класс `Db` выполняет следующие функции:
-
-* хранит строку подключения к базе данных PostgreSQL;
-* предоставляет централизованный способ создания объекта `NpgsqlConnection`;
-* упрощает изменение параметров подключения без правок в бизнес-логике;
-* обеспечивает единообразный доступ к БД во всех слоях приложения.
+### Data/Db.cs
 
 ```csharp
 using Npgsql;
@@ -235,1273 +153,561 @@ namespace DairyDemo.Auth.Data;
 
 public static class Db
 {
-
-    public static string ConnectionString =
-        "Host=localhost;Port=5432;Database=dairy_demo;Username=postgres;Password=;Search Path=app";
-
     public static NpgsqlConnection CreateConnection()
     {
-        string? settings = Environment.GetEnvironmentVariable("DKIP_DB_CONNECTION");
-        string settingsFile = Path.Combine(AppContext.BaseDirectory, "db-connection.txt");
-        if (string.IsNullOrWhiteSpace(settings) && File.Exists(settingsFile))
-            settings = File.ReadAllText(settingsFile).Trim();
+        var value = Environment.GetEnvironmentVariable("DKIP_DB_CONNECTION");
+        var path = Path.Combine(AppContext.BaseDirectory, "db-connection.txt");
+        if (string.IsNullOrWhiteSpace(value) && File.Exists(path))
+            value = File.ReadAllText(path).Trim();
 
-        return new NpgsqlConnection(string.IsNullOrWhiteSpace(settings) ? ConnectionString : settings);
+        if (string.IsNullOrWhiteSpace(value))
+            throw new InvalidOperationException("Укажите подключение к базе в db-connection.txt.");
+
+        return new NpgsqlConnection(value);
     }
 }
 ```
 
-#### Пояснение параметров строки подключения
+## Добавьте запросы пользователей
 
-В строке подключения используются следующие параметры:
-
-* `Host` — адрес сервера базы данных (в данном случае `localhost`);
-* `Port` — порт, на котором запущен PostgreSQL (стандартно `5432`);
-* `Database` — имя базы данных PostgreSQL;
-* `Username` — имя пользователя СУБД;
-* `Password` — пароль пользователя СУБД;
-* `Search Path` — схема базы данных, в которой расположены таблицы приложения.
-
-Использование параметра `Search Path=app` позволяет обращаться к таблицам без явного указания схемы в SQL-запросах (например, использовать `users` вместо `app.users`).
-
----
-
-### 4.4. Data Model: `Data/Models/User.cs`
-
-Для представления данных пользователя в приложении используется модель `User`, расположенная в каталоге `Data/Models`. Данная модель отражает структуру записи таблицы `users` базы данных PostgreSQL и применяется при передаче данных между слоями доступа к данным, бизнес-логики и пользовательского интерфейса.
-
-#### Назначение модели `User`
-
-Модель `User` предназначена для:
-
-* хранения данных пользователя, полученных из базы данных;
-* передачи информации о пользователе между сервисами приложения;
-* определения прав доступа пользователя на основе его роли;
-* реализации логики блокировки учётной записи.
-
-Класс является `sealed`, что запрещает наследование и гарантирует
-использование модели только в исходном виде, без изменения структуры
-в других частях приложения.
+В папке `Data` создайте `UserRepository.cs`. В запросах значения полей передаются отдельно через параметры. `FindAsync` получает одну запись по логину, `ListAsync` загружает таблицу для администратора, `SaveAsync` добавляет или редактирует строку. `AddFailedAttemptAsync` блокирует на третьей ошибке. PostgreSQL вычисляет оба присваивания по прежним значениям строки. Поэтому проверка `failed_attempts >= 2` устанавливает флаг при третьей ошибке. `RETURNING is_locked` возвращает его сразу после изменения. `ResetAfterSuccessAsync` сбрасывает число промахов при успешном входе, `UnlockAsync` снимает флаг и обнуляет счётчик.
 
 ```csharp
-namespace DairyDemo.Auth.Data.Models;
-
-public sealed class User
-{
-    public long Id { get; init; }
-    public string Login { get; init; } = "";
-    public string PasswordHash { get; init; } = "";
-    public string Role { get; init; } = "user"; // admin | user
-    public int FailedAttempts { get; init; }
-    public bool IsLocked { get; init; }
-}
-```
-
-#### Пояснение свойств модели
-
-* `Id` — уникальный идентификатор пользователя (первичный ключ таблицы);
-* `Login` — логин пользователя, используемый для авторизации;
-* `PasswordHash` — хэш пароля пользователя, сохранённый в базе данных
-  (в формате BCrypt);
-* `Role` — роль пользователя в системе:
-
-  * `admin` — администратор;
-  * `user` — обычный пользователь;
-* `FailedAttempts` — количество подряд неудачных попыток входа;
-* `IsLocked` — признак блокировки учётной записи пользователя.
-
----
-
-### 4.5. Repository: `Data/Repositories/UserRepository.cs`
-
-Для изоляции логики доступа к данным и взаимодействия с базой данных
-PostgreSQL в проекте используется репозиторий `UserRepository`,
-расположенный в каталоге `Data/Repositories`.
-
-Репозиторий реализует операции чтения и изменения данных пользователей,
-инкапсулируя SQL-запросы и работу с драйвером `Npgsql`. Такой подход
-позволяет отделить бизнес-логику приложения от деталей хранения данных.
-
-```csharp
-using DairyDemo.Auth.Data.Models;
 using Npgsql;
 
-namespace DairyDemo.Auth.Data.Repositories;
+namespace DairyDemo.Auth.Data;
 
 public sealed class UserRepository
 {
-    public async Task<User?> GetByLoginAsync(string login)
+    private const string Fields = "id, login, password_hash, role, failed_attempts, is_locked";
+
+    public async Task<User?> FindAsync(string login)
     {
-        await using var conn = Db.CreateConnection();
-        await conn.OpenAsync();
-
-        const string sql = @"
-select id, login, password_hash, role, failed_attempts, is_locked
-from app.users
-where login = @login;
-";
-        await using var cmd = new NpgsqlCommand(sql, conn);
-        cmd.Parameters.AddWithValue("login", login);
-
-        await using var r = await cmd.ExecuteReaderAsync();
-        if (!await r.ReadAsync()) return null;
-
-        return new User
-        {
-            Id = r.GetInt64(0),
-            Login = r.GetString(1),
-            PasswordHash = r.GetString(2),
-            Role = r.GetString(3),
-            FailedAttempts = r.GetInt32(4),
-            IsLocked = r.GetBoolean(5)
-        };
+        var users = await ReadAsync($"SELECT {Fields} FROM app.users WHERE login = @login", ("@login", login));
+        return users.SingleOrDefault();
     }
 
-    public async Task<List<User>> GetAllAsync()
+    public Task<List<User>> ListAsync() => ReadAsync($"SELECT {Fields} FROM app.users ORDER BY id");
+
+    public Task<bool> HasUsersAsync() => WithCommandAsync(
+        "SELECT EXISTS(SELECT 1 FROM app.users)",
+        async command => await command.ExecuteScalarAsync() is true);
+
+    public Task<int> SaveAsync(long? id, string login, string role, string? hash)
     {
-        await using var conn = Db.CreateConnection();
-        await conn.OpenAsync();
-
-        const string sql = @"
-select id, login, password_hash, role, failed_attempts, is_locked
-from app.users
-order by id;
-";
-        await using var cmd = new NpgsqlCommand(sql, conn);
-
-        var list = new List<User>();
-        await using var r = await cmd.ExecuteReaderAsync();
-        while (await r.ReadAsync())
+        if (id is null)
         {
-            list.Add(new User
-            {
-                Id = r.GetInt64(0),
-                Login = r.GetString(1),
-                PasswordHash = r.GetString(2),
-                Role = r.GetString(3),
-                FailedAttempts = r.GetInt32(4),
-                IsLocked = r.GetBoolean(5)
-            });
+            return ChangeAsync(
+                "INSERT INTO app.users (login, password_hash, role) VALUES (@login, @hash, @role)",
+                ("@login", login), ("@hash", hash ?? throw new ArgumentNullException(nameof(hash))), ("@role", role));
         }
-        return list;
+
+        return ChangeAsync("""
+            UPDATE app.users
+            SET login = @login,
+                role = @role,
+                password_hash = COALESCE(NULLIF(@hash, ''), password_hash),
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = @id
+            """, ("@login", login), ("@role", role), ("@hash", hash ?? string.Empty), ("@id", id.Value));
     }
 
-    public async Task<bool> ExistsLoginAsync(string login)
+    // UPDATE с RETURNING сохраняет счётчик и сразу возвращает флаг блокировки.
+    public Task<bool> AddFailedAttemptAsync(long id) => WithCommandAsync("""
+        UPDATE app.users
+        SET failed_attempts = failed_attempts + 1,
+            is_locked = (failed_attempts >= 2),
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = @id AND NOT is_locked
+        RETURNING is_locked
+        """, async command => await command.ExecuteScalarAsync() is not false, ("@id", id));
+
+    public Task<int> ResetAfterSuccessAsync(long id) => ChangeAsync("""
+        UPDATE app.users SET failed_attempts = 0, updated_at = CURRENT_TIMESTAMP
+        WHERE id = @id AND NOT is_locked
+        """, ("@id", id));
+
+    public Task<int> UnlockAsync(long id) => ChangeAsync("""
+        UPDATE app.users SET is_locked = false, failed_attempts = 0, updated_at = CURRENT_TIMESTAMP
+        WHERE id = @id
+        """, ("@id", id));
+
+    private Task<int> ChangeAsync(string sql, params (string Name, object Value)[] parameters) =>
+        WithCommandAsync(sql, command => command.ExecuteNonQueryAsync(), parameters);
+
+    private Task<List<User>> ReadAsync(string sql, params (string Name, object Value)[] parameters) =>
+        WithCommandAsync(sql, async command =>
+        {
+            await using var reader = await command.ExecuteReaderAsync();
+            var users = new List<User>();
+            while (await reader.ReadAsync())
+            {
+                users.Add(new User(reader.GetInt64(0), reader.GetString(1), reader.GetString(2),
+                    reader.GetString(3), reader.GetInt32(4), reader.GetBoolean(5)));
+            }
+            return users;
+        }, parameters);
+
+    private static async Task<T> WithCommandAsync<T>(string sql, Func<NpgsqlCommand, Task<T>> run,
+        params (string Name, object Value)[] parameters)
     {
-        await using var conn = Db.CreateConnection();
-        await conn.OpenAsync();
+        await using var connection = Db.CreateConnection();
+        await connection.OpenAsync();
+        await using var command = connection.CreateCommand();
+        command.CommandText = sql;
+        foreach (var (name, value) in parameters)
+            command.Parameters.AddWithValue(name, value);
 
-        const string sql = @"select 1 from app.users where login=@login limit 1;";
-        await using var cmd = new NpgsqlCommand(sql, conn);
-        cmd.Parameters.AddWithValue("login", login);
-
-        return await cmd.ExecuteScalarAsync() != null;
-    }
-
-    public async Task AddUserAsync(string login, string passwordHash, string role)
-    {
-        await using var conn = Db.CreateConnection();
-        await conn.OpenAsync();
-
-        const string sql = @"
-insert into app.users(login, password_hash, role)
-values (@login, @hash, @role);
-";
-        await using var cmd = new NpgsqlCommand(sql, conn);
-        cmd.Parameters.AddWithValue("login", login);
-        cmd.Parameters.AddWithValue("hash", passwordHash);
-        cmd.Parameters.AddWithValue("role", role);
-        await cmd.ExecuteNonQueryAsync();
-    }
-
-    public async Task UpdateUserAsync(long id, string login, string role)
-    {
-        await using var conn = Db.CreateConnection();
-        await conn.OpenAsync();
-
-        const string sql = @"
-update app.users
-set login=@login, role=@role
-where id=@id;
-";
-        await using var cmd = new NpgsqlCommand(sql, conn);
-        cmd.Parameters.AddWithValue("id", id);
-        cmd.Parameters.AddWithValue("login", login);
-        cmd.Parameters.AddWithValue("role", role);
-        await cmd.ExecuteNonQueryAsync();
-    }
-
-    public async Task UpdatePasswordAsync(long id, string passwordHash)
-    {
-        await using var conn = Db.CreateConnection();
-        await conn.OpenAsync();
-
-        const string sql = @"update app.users set password_hash=@hash where id=@id;";
-        await using var cmd = new NpgsqlCommand(sql, conn);
-        cmd.Parameters.AddWithValue("id", id);
-        cmd.Parameters.AddWithValue("hash", passwordHash);
-        await cmd.ExecuteNonQueryAsync();
-    }
-
-    public async Task IncrementFailedAttemptsAndLockIfNeededAsync(long userId)
-    {
-        await using var conn = Db.CreateConnection();
-        await conn.OpenAsync();
-
-        const string sql = @"
-update app.users
-set failed_attempts = failed_attempts + 1,
-    is_locked = case when (failed_attempts + 1) >= 3 then true else is_locked end
-where id = @id;
-";
-        await using var cmd = new NpgsqlCommand(sql, conn);
-        cmd.Parameters.AddWithValue("id", userId);
-        await cmd.ExecuteNonQueryAsync();
-    }
-
-    public async Task ResetFailedAttemptsAsync(long userId)
-    {
-        await using var conn = Db.CreateConnection();
-        await conn.OpenAsync();
-
-        const string sql = @"update app.users set failed_attempts = 0 where id=@id;";
-        await using var cmd = new NpgsqlCommand(sql, conn);
-        cmd.Parameters.AddWithValue("id", userId);
-        await cmd.ExecuteNonQueryAsync();
-    }
-
-    public async Task UnlockAsync(long userId)
-    {
-        await using var conn = Db.CreateConnection();
-        await conn.OpenAsync();
-
-        const string sql = @"update app.users set failed_attempts=0, is_locked=false where id=@id;";
-        await using var cmd = new NpgsqlCommand(sql, conn);
-        cmd.Parameters.AddWithValue("id", userId);
-        await cmd.ExecuteNonQueryAsync();
+        return await run(command);
     }
 }
 ```
 
-#### Назначение репозитория `UserRepository`
+## Добавьте проверку пароля и входа
 
-Репозиторий `UserRepository` предназначен для:
+Выделите корень проекта и создайте папку `Services`. Добавьте в неё два класса. BCrypt формирует хеш с солью и проверяет пароль по хешу из БД. В `AuthService.LoginAsync` сначала проверяется наличие пользователя и флаг блокировки, затем пароль и пазл. Один клик по «Войти» увеличивает счётчик максимум на единицу. В случае успеха программа обнуляет счётчик и выбирает окно по роли.
 
-* получения данных пользователей из базы данных;
-* добавления и изменения записей пользователей;
-* проверки уникальности логина;
-* управления паролями пользователей;
-* учёта неудачных попыток входа;
-* автоматической блокировки и разблокировки учётных записей.
-
-#### Реализуемые операции
-
-В репозитории реализованы следующие группы операций:
-
-* **Чтение данных**:
-
-    * получение пользователя по логину;
-    * получение списка всех пользователей;
-    
-* **Управление пользователями**:
-
-    * добавление нового пользователя;
-    * обновление логина и роли;
-    * изменение пароля;
-
-* **Безопасность и блокировка**:
-
-    * увеличение счётчика неудачных попыток входа;
-    * автоматическая блокировка при достижении лимита попыток;
-    * сброс счётчика попыток;
-    * снятие блокировки учётной записи.
-
----
-
-
-### 4.6. Services: `Services/PasswordService.cs`
-
-Для обеспечения безопасного хранения и проверки паролей пользователей
-в проекте реализован сервис `PasswordService`, расположенный в каталоге
-`Services`. Данный сервис инкапсулирует логику хэширования и проверки
-паролей и используется другими компонентами приложения (в частности,
-сервисом авторизации).
+### Services/PasswordService.cs
 
 ```csharp
+using System.Text;
+
 namespace DairyDemo.Auth.Services;
 
-public sealed class PasswordService
+public static class PasswordService
 {
-    public string HashPassword(string password)
-        => BCrypt.Net.BCrypt.HashPassword(password);
+    public static bool FitsBcrypt(string password) => Encoding.UTF8.GetByteCount(password) <= 72;
 
-    public bool Verify(string password, string hash)
+    public static string Hash(string password) => BCrypt.Net.BCrypt.HashPassword(password, workFactor: 11);
+
+    public static bool Verify(string password, string hash) =>
+        FitsBcrypt(password) && BCrypt.Net.BCrypt.Verify(password, hash);
+}
+```
+
+### Services/AuthService.cs
+
+```csharp
+using DairyDemo.Auth.Data;
+
+namespace DairyDemo.Auth.Services;
+
+public sealed class AuthService(UserRepository repository)
+{
+    private const string WrongCredentials =
+        "Вы ввели неверный логин или пароль. Пожалуйста проверьте ещё раз введенные данные";
+    private const string Locked = "Вы заблокированы. Обратитесь к администратору";
+
+    public async Task<(User? User, string Message)> LoginAsync(string login, string password, bool puzzleSolved)
     {
-        if (string.IsNullOrWhiteSpace(hash))
-            return false;
+        var user = await repository.FindAsync(login);
+        if (user is null)
+            return (null, WrongCredentials);
+        if (user.IsLocked)
+            return (null, Locked);
 
-        // BCrypt хэши обычно начинаются с $2a$, $2b$, $2y$
-        if (!hash.StartsWith("$2"))
-            return false;
+        var correctPassword = PasswordService.Verify(password, user.PasswordHash);
+        // Для найденной записи обе ошибки учитываются в одном счётчике.
+        if (!correctPassword || !puzzleSolved)
+        {
+            if (await repository.AddFailedAttemptAsync(user.Id))
+                return (null, Locked);
 
+            return (null, correctPassword ? "Соберите изображение для подтверждения" : WrongCredentials);
+        }
+
+        if (await repository.ResetAfterSuccessAsync(user.Id) == 0)
+            return (null, Locked);
+
+        return (user, "Вы успешно авторизовались");
+    }
+}
+```
+
+## Добавьте логику LoginForm
+
+Нажмите **F7** на форме или выберите **Просмотреть код** и откройте `Forms/LoginForm.cs`. Вставьте код в этот файл. Вызов `InitializeComponent()` загружает контролы из конструктора. События подписываются в конструкторе класса, поэтому кнопки не требуют дополнительных подписок в панели «События».
+
+Метод `ShufflePuzzle` перемешивает фрагменты. Обработчик `Piece_Click` запоминает первый выбор и меняет два индекса после второго клика. `LoginForm_Shown` загружает четыре изображения. Если база пуста, открывается форма настройки первого администратора. `BtnLogin_Click` проверяет обязательные поля, вызывает службу входа и открывает окно по роли.
+
+```csharp
+using DairyDemo.Auth.Data;
+using DairyDemo.Auth.Services;
+using Npgsql;
+
+namespace DairyDemo.Auth.Forms;
+
+public partial class LoginForm : Form
+{
+    private readonly UserRepository _repository = new();
+    private readonly AuthService _auth;
+    private readonly PictureBox[] _pieces;
+    private readonly List<Image> _images = new();
+    private readonly int[] _order = [0, 1, 2, 3];
+    private int _selectedPiece = -1;
+
+    public LoginForm()
+    {
+        InitializeComponent();
+        _auth = new AuthService(_repository);
+        _pieces = [piece1, piece2, piece3, piece4];
+
+        Shown += LoginForm_Shown;
+        FormClosed += LoginForm_FormClosed;
+        btnLogin.Click += BtnLogin_Click;
+        foreach (var piece in _pieces)
+            piece.Click += Piece_Click;
+    }
+
+    private bool PuzzleSolved => _order.AsSpan().SequenceEqual([0, 1, 2, 3]);
+
+    private async void LoginForm_Shown(object? sender, EventArgs e)
+    {
+        btnLogin.Enabled = false;
         try
         {
-            return BCrypt.Net.BCrypt.Verify(password, hash);
+            for (var number = 1; number <= _pieces.Length; number++)
+            {
+                var path = Path.Combine(AppContext.BaseDirectory, "Assets", "captcha", $"{number}.png");
+                _images.Add(Image.FromFile(path));
+            }
+
+            ShufflePuzzle();
+            if (!await _repository.HasUsersAsync() && !await CreateFirstAdminAsync())
+            {
+                Close();
+                return;
+            }
+
+            btnLogin.Enabled = true;
+            tbLogin.Focus();
         }
-        catch (BCrypt.Net.SaltParseException)
+        catch (Exception error) when (error is NpgsqlException or IOException or InvalidOperationException or ArgumentException)
         {
-            // В базе лежит строка не формата BCrypt
+            ShowSetupError();
+        }
+    }
+
+    private async Task<bool> CreateFirstAdminAsync()
+    {
+        using var editor = new UserEditForm();
+        editor.Prepare(null, firstAdmin: true);
+        if (editor.ShowDialog(this) != DialogResult.OK)
             return false;
-        }
-        catch
-        {
-            // Любая другая непредвиденная ошибка - тоже трактуем как неверный пароль
-            return false;
-        }
-    }
-}
-```
 
-#### Назначение сервиса `PasswordService`
-
-Сервис `PasswordService` предназначен для:
-
-* генерации криптографически стойких хэшей паролей пользователей;
-* проверки соответствия введённого пароля сохранённому хэшу;
-* изоляции криптографической логики от остальных частей приложения.
-
-Использование отдельного сервиса упрощает сопровождение кода и позволяет
-при необходимости заменить алгоритм хэширования без изменения бизнес-логики.
-
-#### Хэширование паролей
-
-Метод `HashPassword` выполняет хэширование пароля с использованием
-алгоритма **BCrypt**, который:
-
-* автоматически генерирует соль;
-* использует адаптивную сложность;
-* считается устойчивым к атакам перебора и радужным таблицам.
-
-В базе данных хранится только хэш пароля, исходное значение пароля
-не сохраняется.
-
-#### Проверка пароля
-
-Метод `Verify` реализует безопасную проверку пароля и содержит
-дополнительные защитные проверки:
-
-* проверка на пустое или некорректное значение хэша;
-* проверка формата BCrypt-хэша по префиксу `$2`;
-* перехват исключений, связанных с некорректным форматом соли;
-* предотвращение аварийного завершения приложения при ошибках проверки.
-
-В случае любой ошибки метод возвращает `false`, что трактуется системой
-как неверно введённый пароль.
-
-
----
-
-
-### 4.7. Services: `Services/AuthService.cs`
-
-Для реализации бизнес-логики авторизации пользователей в системе
-используется сервис `AuthService`, расположенный в каталоге `Services`.
-Данный сервис объединяет работу с репозиторием пользователей,
-сервисом проверки паролей и механизмом блокировки учётных записей.
-
-```csharp
-using DairyDemo.Auth.Data.Repositories;
-using DairyDemo.Auth.Data.Models;
-
-namespace DairyDemo.Auth.Services;
-
-public sealed class AuthService
-{
-    private readonly UserRepository _repo = new();
-    private readonly PasswordService _pwd = new();
-
-    private const string InvalidMsg =
-        "Вы ввели неверный логин или пароль. Пожалуйста, проверьте ещё раз введённые данные";
-    private const string LockedMsg =
-        "Вы заблокированы. Обратитесь к администратору";
-    private const string SuccessMsg =
-        "Вы успешно авторизовались";
-
-    public async Task<(bool ok, string message, User? user)> LoginAsync(
-        string login, string password, bool captchaOk)
-    {
-        login = (login ?? "").Trim();
-
-        var user = await _repo.GetByLoginAsync(login);
-        if (user is null)
-            return (false, InvalidMsg, null);
-
-        if (user.IsLocked)
-            return (false, LockedMsg, user);
-
-        // Попытка №1/2/3: капча неверна => считаем попытку неудачной
-        if (!captchaOk)
-        {
-            await _repo.IncrementFailedAttemptsAndLockIfNeededAsync(user.Id);
-            return (false, InvalidMsg, user);
-        }
-
-        // Попытка №1/2/3: пароль неверен => считаем попытку неудачной
-        if (!_pwd.Verify(password, user.PasswordHash))
-        {
-            await _repo.IncrementFailedAttemptsAndLockIfNeededAsync(user.Id);
-            return (false, InvalidMsg, user);
-        }
-
-        // Успех: сбросить счётчик попыток
-        await _repo.ResetFailedAttemptsAsync(user.Id);
-        return (true, SuccessMsg, user);
-    }
-}
-```
-
-#### Назначение сервиса `AuthService`
-
-Сервис `AuthService` предназначен для:
-
-* реализации логики аутентификации пользователей;
-* проверки корректности введённых учётных данных;
-* взаимодействия с интерактивной капчей;
-* управления счётчиком неудачных попыток входа;
-* блокировки и разблокировки учётных записей;
-* формирования сообщений для пользовательского интерфейса.
-
-Сервис является центральным элементом процесса авторизации
-и не содержит кода, связанного с пользовательским интерфейсом.
-
-#### Логика авторизации пользователя
-
-Процесс авторизации выполняется в следующей последовательности:
-
-1. Нормализация введённого логина (удаление лишних пробелов).
-2. Поиск пользователя в базе данных по логину.
-3. Проверка состояния блокировки учётной записи.
-4. Проверка корректности прохождения капчи.
-5. Проверка соответствия введённого пароля сохранённому хэшу.
-6. Сброс счётчика неудачных попыток при успешной авторизации.
-7. Возврат результата авторизации и соответствующего сообщения.
-
-#### Обработка неудачных попыток входа
-
-Каждая неудачная попытка авторизации (неверная капча или пароль):
-
-* увеличивает счётчик `failed_attempts`;
-* при достижении трёх подряд неудачных попыток приводит к блокировке
-  учётной записи пользователя.
-
-При попытке входа заблокированного пользователя система возвращает
-сообщение о необходимости обращения к администратору.
-
-#### Возвращаемое значение метода `LoginAsync`
-
-Метод `LoginAsync` возвращает кортеж:
-
-* `ok` — признак успешной авторизации;
-* `message` — текст сообщения для отображения пользователю;
-* `user` — объект пользователя (при успешной авторизации либо при блокировке).
-
-Такой подход позволяет пользовательскому интерфейсу корректно
-реагировать на различные сценарии входа без дублирования логики.
-
----
-
-
-### 4.8. UI Control: `UI/Controls/CaptchaPuzzleControl.cs` (капча-пазл 2×2)
-
-Для защиты формы авторизации от автоматизированного ввода в приложении
-реализован пользовательский визуальный компонент
-`CaptchaPuzzleControl`, расположенный в каталоге `UI/Controls`.
-
-Контрол представляет собой интерактивную капчу в виде пазла 2×2,
-собираемого пользователем путём перестановки фрагментов изображения.
-
-> Примечание: фактическая реализация использует сетку 2×2 (4 фрагмента),
-> что соответствует учебным требованиям и упрощает проверку корректности
-> сборки изображения.
-
-```csharp
-using System;
-using System.Drawing;
-using System.IO;
-using System.Linq;
-using System.Windows.Forms;
-
-namespace DairyDemo.Auth.UI.Controls;
-
-public class CaptchaPuzzleControl : UserControl
-{
-    private readonly PictureBox[] _boxes = new PictureBox[4];
-    private int[] _currentOrder = new int[4];
-    private int? _selectedIndex = null;
-
-    public bool IsSolved { get; private set; }
-
-    public CaptchaPuzzleControl()
-    {
-        Width = 220;
-        Height = 220;
-
-        var table = new TableLayoutPanel
-        {
-            Dock = DockStyle.Fill,
-            RowCount = 2,
-            ColumnCount = 2
-        };
-
-        table.RowStyles.Add(new RowStyle(SizeType.Percent, 50));
-        table.RowStyles.Add(new RowStyle(SizeType.Percent, 50));
-        table.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
-        table.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
-
-        for (int i = 0; i < 4; i++)
-        {
-            var pb = new PictureBox
-            {
-                Dock = DockStyle.Fill,
-                SizeMode = PictureBoxSizeMode.StretchImage,
-                BorderStyle = BorderStyle.FixedSingle,
-                Tag = i
-            };
-
-            pb.Click += OnTileClick;
-            _boxes[i] = pb;
-            table.Controls.Add(pb, i % 2, i / 2);
-        }
-
-        Controls.Add(table);
+        await _repository.SaveAsync(null, editor.LoginValue, "admin", PasswordService.Hash(editor.PasswordValue));
+        return true;
     }
 
-    public void LoadFromFolder(string folderPath)
+    private void ShufflePuzzle()
     {
-        if (!Directory.Exists(folderPath))
-            throw new DirectoryNotFoundException(folderPath);
-
-        for (int i = 0; i < 4; i++)
+        do
         {
-            var path = Path.Combine(folderPath, $"{i + 1}.png");
-            if (!File.Exists(path))
-                throw new FileNotFoundException(path);
+            Random.Shared.Shuffle(_order);
+        } while (PuzzleSolved); // Не показываем уже собранное изображение.
 
-            _boxes[i].Image = Image.FromFile(path);
+        _selectedPiece = -1;
+        DrawPuzzle();
+    }
+
+    private void DrawPuzzle()
+    {
+        for (var index = 0; index < _pieces.Length; index++)
+        {
+            _pieces[index].Image = _images[_order[index]];
+            _pieces[index].BorderStyle = index == _selectedPiece ? BorderStyle.Fixed3D : BorderStyle.FixedSingle;
         }
 
-        Shuffle();
+        lblPuzzle.Text = PuzzleSolved
+            ? "Пазл собран"
+            : "Соберите пазл. Щёлкните по двум фрагментам.";
     }
 
-    public void Shuffle()
+    private void Piece_Click(object? sender, EventArgs e)
     {
-        var rnd = new Random();
-        _currentOrder = Enumerable.Range(0, 4)
-            .OrderBy(_ => rnd.Next())
-            .ToArray();
-
-        ApplyOrder();
-        CheckSolved();
-    }
-
-    private void ApplyOrder()
-    {
-        for (int i = 0; i < 4; i++)
-        {
-            _boxes[i].Image = Image.FromFile(
-                Path.Combine(
-                    AppDomain.CurrentDomain.BaseDirectory,
-                    "Assets",
-                    "captcha",
-                    $"{_currentOrder[i] + 1}.png")
-            );
-
-            _boxes[i].BorderStyle = BorderStyle.FixedSingle;
-        }
-
-        _selectedIndex = null;
-    }
-
-    private void OnTileClick(object? sender, EventArgs e)
-    {
-        if (sender is not PictureBox pb)
+        if (sender is not PictureBox piece || _images.Count != _pieces.Length)
             return;
 
-        int index = Array.IndexOf(_boxes, pb);
-
-        if (_selectedIndex == null)
+        var position = Array.IndexOf(_pieces, piece);
+        if (_selectedPiece < 0)
         {
-            _selectedIndex = index;
-            pb.BorderStyle = BorderStyle.Fixed3D;
+            _selectedPiece = position;
+            DrawPuzzle();
             return;
         }
 
-        if (_selectedIndex == index)
+        (_order[_selectedPiece], _order[position]) = (_order[position], _order[_selectedPiece]);
+        _selectedPiece = -1;
+        DrawPuzzle();
+    }
+
+    private async void BtnLogin_Click(object? sender, EventArgs e)
+    {
+        var login = tbLogin.Text.Trim();
+        var password = tbPassword.Text;
+        if (login.Length == 0 || string.IsNullOrWhiteSpace(password))
         {
-            pb.BorderStyle = BorderStyle.FixedSingle;
-            _selectedIndex = null;
+            MessageBox.Show(this, "Заполните логин и пароль.", "Проверьте поля",
+                MessageBoxButtons.OK, MessageBoxIcon.Warning);
             return;
         }
 
-        // Перестановка фрагментов
-        (_currentOrder[_selectedIndex.Value], _currentOrder[index]) =
-            (_currentOrder[index], _currentOrder[_selectedIndex.Value]);
-
-        ApplyOrder();
-        CheckSolved();
-    }
-
-    private void CheckSolved()
-    {
-        IsSolved = _currentOrder.SequenceEqual(new[] { 0, 1, 2, 3 });
-    }
-}
-```
-
-#### Назначение контрола `CaptchaPuzzleControl`
-
-Контрол `CaptchaPuzzleControl` предназначен для:
-
-* реализации интерактивной графической капчи;
-* предотвращения автоматизированного подбора учётных данных;
-* проверки участия пользователя в процессе авторизации.
-
-Контрол используется на форме авторизации и взаимодействует с
-сервисом `AuthService` через свойство `IsSolved`.
-
-#### Логика работы капчи
-
-Алгоритм работы капчи включает следующие этапы:
-
-1. Загрузка фрагментов изображения из каталога `Assets/captcha`.
-2. Случайное перемешивание порядка фрагментов.
-3. Отображение фрагментов в сетке 2×2.
-4. Выбор пользователем двух фрагментов и их перестановка.
-5. Проверка текущего порядка фрагментов с эталонным.
-6. Установка признака успешного прохождения капчи (`IsSolved`).
-
-#### Проверка корректности сборки
-
-Корректность сборки изображения определяется сравнением текущего
-порядка фрагментов с эталонным массивом `{0, 1, 2, 3}`.
-При совпадении значений капча считается пройденной.
-
-   ![Пример собранной капчи](../assets/images/29.png)
-
-   /// caption
-   Рисунок 2 – Пример собранной капчи
-   ///
-
-
----
-
-### 4.9. UI: `UI/Forms/LoginForm.cs`  
-(форма авторизации, комбинированный подход: Designer + программное создание элементов)
-
-Форма авторизации `LoginForm` предназначена для ввода пользователем
-учётных данных (логин и пароль), прохождения интерактивной капчи и
-инициации процесса аутентификации.
-
-В рамках учебного проекта допускается использование **двух способов
-создания элементов интерфейса**:
-
-- с помощью визуального конструктора (Designer);
-- программно, с созданием компонентов в коде.
-
-В данной реализации используется **комбинированный подход**:
-базовая форма создаётся через Designer, а специализированные элементы
-(например, пользовательский контрол капчи) добавляются программно.
-
----
-
-#### Таблица — способы создания компонентов интерфейса
-
-| Компонент интерфейса            | Через Designer | Через код | Пояснение |
-|---------------------------------|:--------------:|:---------:|-----------|
-| Форма (`Form`)                  | ✔              | ✔         | Может быть создана как визуально, так и полностью программно |
-| `Label`                         | ✔              | ✔         | Используется для подписей полей и сообщений |
-| `TextBox`                       | ✔              | ✔         | Поля ввода логина и пароля |
-| `Button`                        | ✔              | ✔         | Кнопки действий (Войти, Выход, Обновить капчу) |
-| `TableLayoutPanel`              | ✔              | ✔         | Используется для адаптивной компоновки |
-| `PictureBox`                    | ✔              | ✔         | Элемент отображения изображений |
-| Пользовательский контрол капчи  | ✖              | ✔         | Создаётся вручную в коде |
-| События (`Click`, `Load` и др.) | ✔              | ✔         | Могут назначаться как в Designer, так и программно |
-
-> Использование программного создания пользовательских контролов
-> позволяет гибко управлять их инициализацией и загрузкой данных.
-
----
-
-#### Назначение комбинированного подхода
-
-Комбинированный подход выбран по следующим причинам:
-
-- Designer ускоряет создание базовой формы и её свойств;
-- пользовательские контролы удобнее инициализировать в коде;
-- уменьшается объём ручной верстки стандартных элементов;
-- сохраняется наглядность структуры формы.
-
----
-
-#### Реализация формы `LoginForm`
-
-Представлен фрагмент кода формы, в котором:
-
-- используется стандартный код, сгенерированный Designer;
-- пользовательский контрол `CaptchaPuzzleControl` создаётся и добавляется вручную;
-- загрузка изображений капчи выполняется программно.
-
-```csharp
-using System;
-using System.Drawing;
-using System.IO;
-using System.Windows.Forms;
-using DairyDemo.Auth.Services;
-using DairyDemo.Auth.UI.Controls;
-
-namespace DairyDemo.Auth.UI.Forms
-{
-    public sealed partial class LoginForm : Form
-    {
-        private readonly AuthService _auth = new();
-
-        private readonly TextBox _tbLogin = new();
-        private readonly TextBox _tbPassword = new();
-        private readonly Button _btnLogin = new();
-        private readonly Button _btnShuffle = new();
-        private readonly Label _lblStatus = new();
-
-        private readonly CaptchaPuzzleControl _captcha = new();
-
-        public LoginForm()
+        btnLogin.Enabled = false;
+        try
         {
-            // ---------- базовые настройки окна ----------
-            Text = "Авторизация";
-            Width = 520;
-            Height = 520;
-            MinimumSize = new Size(520, 520);
-            StartPosition = FormStartPosition.CenterScreen;
-            FormBorderStyle = FormBorderStyle.FixedDialog;
-            MaximizeBox = false;
+            var (user, message) = await _auth.LoginAsync(login, password, PuzzleSolved);
+            var icon = user is null ? MessageBoxIcon.Warning : MessageBoxIcon.Information;
+            MessageBox.Show(this, message, "Авторизация", MessageBoxButtons.OK, icon);
 
-            // ---------- логин ----------
-            var lblLogin = new Label
-            {
-                Text = "Логин",
-                AutoSize = true,
-                Left = 20,
-                Top = 20
-            };
-
-            _tbLogin.SetBounds(20, 45, 220, 28);
-            _tbLogin.TabIndex = 0;
-
-            // ---------- пароль ----------
-            var lblPass = new Label
-            {
-                Text = "Пароль",
-                AutoSize = true,
-                Left = 20,
-                Top = 85
-            };
-
-            _tbPassword.SetBounds(20, 110, 220, 28);
-            _tbPassword.UseSystemPasswordChar = true;
-            _tbPassword.TabIndex = 1;
-
-            // ---------- кнопка входа ----------
-            _btnLogin.Text = "Войти";
-            _btnLogin.SetBounds(20, 155, 220, 36);
-            _btnLogin.TabIndex = 2;
-            _btnLogin.Click += BtnLogin_Click;
-
-            // ---------- статус ----------
-            _lblStatus.SetBounds(20, 200, 460, 45);
-            _lblStatus.ForeColor = Color.DarkRed;
-            _lblStatus.AutoSize = false;
-
-            // ---------- капча ----------
-            var lblCaptcha = new Label
-            {
-                Text = "Капча-пазл (соберите изображение)",
-                AutoSize = true,
-                Left = 270,
-                Top = 20
-            };
-
-            _captcha.SetBounds(270, 45, 220, 220);
-
-            // ---------- кнопка обновления капчи ----------
-            _btnShuffle.Text = "Обновить пазл";
-            _btnShuffle.SetBounds(270, 275, 220, 36);
-            _btnShuffle.TabIndex = 3;
-            _btnShuffle.Click += (_, __) => _captcha.Shuffle();
-
-            // ---------- добавление контролов ----------
-            Controls.AddRange(new Control[]
-            {
-                lblLogin,
-                _tbLogin,
-                lblPass,
-                _tbPassword,
-                _btnLogin,
-                _lblStatus,
-                lblCaptcha,
-                _captcha,
-                _btnShuffle
-            });
-
-            // ---------- загрузка капчи ----------
-            try
-            {
-                var folderPath = Path.Combine(
-                    AppDomain.CurrentDomain.BaseDirectory,
-                    "Assets",
-                    "captcha"
-                );
-
-                _captcha.LoadFromFolder(folderPath);
-            }
-            catch (Exception ex)
-            {
-                _lblStatus.Text = "Ошибка загрузки капчи: " + ex.Message;
-            }
-        }
-
-        private async void BtnLogin_Click(object? sender, EventArgs e)
-        {
-            var login = _tbLogin.Text.Trim();
-            var password = _tbPassword.Text;
-
-            if (string.IsNullOrWhiteSpace(login) || string.IsNullOrWhiteSpace(password))
-            {
-                _lblStatus.Text = "Поля «Логин» и «Пароль» обязательны для заполнения.";
-                return;
-            }
-
-            if (!_captcha.IsSolved)
-            {
-                _lblStatus.Text = "Соберите изображение для подтверждения.";
-                return;
-            }
-
-            var (ok, message, user) = await _auth.LoginAsync(
-                login,
-                password,
-                captchaOk: true
-            );
-
-            _lblStatus.Text = message;
-
-            if (!ok || user is null)
+            if (user is null)
                 return;
 
-            // ---------- переход по роли ----------
+            using Form next = user.Role == "admin" ? new AdminForm() : new UserForm(user.Login);
             Hide();
             try
             {
-                if (user.Role == "admin")
-                    new AdminForm(user).ShowDialog();
-                else
-                    new UserForm(user).ShowDialog();
+                next.ShowDialog();
             }
             finally
             {
-                Close();
+                Show();
             }
+            tbPassword.Clear();
+            ShufflePuzzle();
+        }
+        catch (Exception error) when (error is NpgsqlException or IOException or InvalidOperationException or ArgumentException)
+        {
+            ShowSetupError();
+        }
+        finally
+        {
+            btnLogin.Enabled = true;
         }
     }
-}
 
-
-```
-
-![Пример формы авторизации](../assets/images/30.png)
-
-/// caption
-Рисунок 3 – Пример формы авторизации
-///
-
----
-
-#### Вывод по реализации формы
-
-Форма `LoginForm`:
-
-* реализует требования задания к интерфейсу авторизации;
-* поддерживает интерактивную капчу;
-* демонстрирует использование пользовательских компонентов;
-* допускает как визуальное, так и программное создание элементов;
-* соответствует принципам удобства использования и модульной архитектуры.
-
----
-
-
-### 4.10. UI: `UI/Forms/UserForm.cs` (рабочий стол пользователя)
-
-Форма `UserForm` представляет собой рабочий стол пользователя,
-успешно прошедшего авторизацию с ролью **user**. Данная форма не содержит
-административных функций и используется для отображения информации
-о текущей пользовательской сессии и выполнения базовых действий.
-
-В рамках учебного проекта форма реализована с применением
-**комбинированного подхода**:
-- базовая форма создаётся с помощью визуального конструктора (Designer);
-- логика обработки событий и наполнение формы могут быть реализованы
-  программно.
-
----
-
-#### Таблица — способы создания компонентов интерфейса
-
-| Компонент интерфейса            | Через Designer | Через код | Пояснение |
-|---------------------------------|:--------------:|:---------:|-----------|
-| Форма (`Form`)                  | ✔              | ✔         | Основное окно рабочего стола пользователя |
-| `Label`                         | ✔              | ✔         | Отображение информации о пользователе |
-| `Button`                        | ✔              | ✔         | Кнопки действий (например, выход из системы) |
-| События формы (`Load`)          | ✔              | ✔         | Используются для инициализации логики |
-| Пользовательские контролы       | ✖              | ✔         | При необходимости могут добавляться вручную |
-
-> Форма пользователя, в отличие от формы администратора, содержит
-> минимальный набор элементов и не требует сложной инициализации.
-
----
-
-#### Назначение формы пользователя
-
-Форма `UserForm` предназначена для:
-- отображения информации о текущем пользователе;
-- подтверждения успешного входа в систему;
-- предоставления пользователю базового интерфейса работы;
-- корректного завершения пользовательской сессии.
-
----
-
-#### Реализация формы `UserForm`
-
-Представлен фрагмент кода формы, в котором:
-- используется стандартный код, сгенерированный Designer;
-- предусмотрена точка расширения логики в обработчике события `Load`.
-
-```csharp
-using DairyDemo.Auth.Data.Models;
-
-namespace DairyDemo.Auth.UI.Forms;
-
-public sealed partial class UserForm : Form
-{
-    private readonly User _user;
-
-    public UserForm(User user)
+    private void LoginForm_FormClosed(object? sender, FormClosedEventArgs e)
     {
-        _user = user;
-
-        Text = "Рабочий стол пользователя";
-        Width = 420;
-        Height = 220;
-        StartPosition = FormStartPosition.CenterScreen;
-
-        var lbl = new Label
-        {
-            Text = $"Вы вошли как: {_user.Login}\nРоль: {_user.Role}",
-            AutoSize = true,
-            Left = 20,
-            Top = 20
-        };
-
-        var btnExit = new Button
-        {
-            Text = "Выход",
-            Left = 20,
-            Top = 90,
-            Width = 120,
-            Height = 36
-        };
-        btnExit.Click += (_, __) => Close();
-
-        Controls.Add(lbl);
-        Controls.Add(btnExit);
+        foreach (var image in _images)
+            image.Dispose();
     }
+
+    private void ShowSetupError() =>
+        MessageBox.Show(this, "Проверьте имя и порт базы, db-connection.txt, таблицу users и четыре файла Assets/captcha.",
+            "Подготовка системы", MessageBoxButtons.OK, MessageBoxIcon.Error);
 }
 ```
 
-   ![Пример формы пользователь](../assets/images/32.png)
+## Добавьте логику окна пользователя
 
-   /// caption
-   Рисунок 4 – Пример формы пользователь
-   /// 
-
----
-
-### 4.11. UI: `UI/Forms/AdminForm.cs` (панель администратора, управление пользователями)
-
-Форма `AdminForm` представляет собой панель администратора системы и
-отображается после успешной авторизации пользователя с ролью **admin**.
-Данная форма предназначена для управления учётными записями пользователей
-и реализации административных функций, предусмотренных заданием.
-
-Административная панель реализована с использованием
-**комбинированного подхода**:
-- базовая структура формы может быть создана через Designer;
-- таблица пользователей и управляющие элементы могут быть добавлены
-  программно.
-
----
-
-#### Таблица — способы создания компонентов интерфейса (AdminForm)
-
-| Компонент интерфейса     | Через Designer | Через код | Пояснение |
-|--------------------------|:--------------:|:---------:|-----------|
-| Форма (`Form`)           | ✔              | ✔         | Основное окно администрирования |
-| `DataGridView`           | ✔              | ✔         | Отображение списка пользователей |
-| `Button`                 | ✔              | ✔         | Управляющие действия администратора |
-| `Label`                  | ✔              | ✔         | Заголовки и пояснения |
-| События (`Click`, `Load`) | ✔              | ✔         | Обработка действий администратора |
-| Работа с данными         | ✖              | ✔         | Через сервисы и репозитории |
-
-> Пользовательский интерфейс администратора ориентирован на наглядность
-> и минимальное количество действий для выполнения операций управления.
-
----
-
-#### Функциональные возможности формы администратора
-
-Форма `AdminForm` обеспечивает выполнение следующих функций:
-- просмотр списка пользователей системы;
-- добавление новых пользователей;
-- изменение логина и роли пользователя;
-- смену пароля пользователя;
-- снятие блокировки учётной записи.
-
----
-
-#### Реализация формы `AdminForm`
-
-Ниже приведён **минимальный, но рабочий пример** формы администратора,
-реализующий базовый функционал управления пользователями.
+Вставьте обработчик в `Forms/UserForm.cs`. Конструктор со строкой `login` показывает имя текущего пользователя. Кнопка закрывает дочернее окно, после чего форма входа появляется снова.
 
 ```csharp
-using DairyDemo.Auth.Data.Models;
-using DairyDemo.Auth.Data.Repositories;
+namespace DairyDemo.Auth.Forms;
+
+public partial class UserForm : Form
+{
+    public UserForm()
+    {
+        InitializeComponent();
+        btnExit.Click += BtnExit_Click;
+    }
+
+    public UserForm(string login) : this()
+    {
+        lblWelcome.Text = $"Вы вошли как {login}. Роль: Пользователь.";
+    }
+
+    private void BtnExit_Click(object? sender, EventArgs e) => Close();
+}
+```
+
+## Добавьте логику диалога учётной записи
+
+Вставьте код в `Forms/UserEditForm.cs`. Конструктор присваивает списку две разрешённые роли. `Prepare` выбирает режим. При первом запуске роль закреплена за администратором. Для новой записи пароль обязателен, при редактировании пустое поле оставляет прежний пароль. `DialogResult.OK` выставляется только после проверки полей.
+
+```csharp
+using DairyDemo.Auth.Data;
 using DairyDemo.Auth.Services;
 
-namespace DairyDemo.Auth.UI.Forms;
+namespace DairyDemo.Auth.Forms;
 
-public sealed partial class AdminForm : Form
+public partial class UserEditForm : Form
 {
-    private readonly User _admin;
-    private readonly UserRepository _repo = new();
-    private readonly PasswordService _pwd = new();
+    private bool _isNew = true;
 
-    private readonly DataGridView _dgv = new();
-
-    private readonly TextBox _tbLogin = new();
-    private readonly ComboBox _cbRole = new();
-    private readonly TextBox _tbNewPassword = new();
-
-    private readonly Button _btnAdd = new();
-    private readonly Button _btnUpdate = new();
-    private readonly Button _btnResetPwd = new();
-    private readonly Button _btnUnlock = new();
-
-    private long? _selectedUserId = null;
-
-    public AdminForm(User admin)
+    public UserEditForm()
     {
-        _admin = admin;
-
-        Text = $"Администратор: {_admin.Login}";
-        Width = 860;
-        Height = 520;
-        StartPosition = FormStartPosition.CenterScreen;
-
-        // Таблица
-        _dgv.SetBounds(20, 20, 800, 240);
-        _dgv.ReadOnly = true;
-        _dgv.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
-        _dgv.MultiSelect = false;
-        _dgv.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
-        _dgv.CellClick += Dgv_CellClick;
-
-        // Поля
-        var lblLogin = new Label { Text = "Логин", Left = 20, Top = 280, AutoSize = true };
-        _tbLogin.SetBounds(20, 305, 240, 28);
-
-        var lblRole = new Label { Text = "Роль", Left = 280, Top = 280, AutoSize = true };
-        _cbRole.SetBounds(280, 305, 160, 28);
-        _cbRole.DropDownStyle = ComboBoxStyle.DropDownList;
-        _cbRole.Items.AddRange(new[] { "admin", "user" });
-        _cbRole.SelectedIndex = 1;
-
-        var lblPwd = new Label { Text = "Новый пароль (для сброса)", Left = 460, Top = 280, AutoSize = true };
-        _tbNewPassword.SetBounds(460, 305, 220, 28);
-        _tbNewPassword.UseSystemPasswordChar = true;
-
-        // Кнопки
-        _btnAdd.Text = "Добавить";
-        _btnAdd.SetBounds(20, 350, 160, 36);
-        _btnAdd.Click += BtnAdd_Click;
-
-        _btnUpdate.Text = "Сохранить изменения";
-        _btnUpdate.SetBounds(200, 350, 240, 36);
-        _btnUpdate.Click += BtnUpdate_Click;
-
-        _btnResetPwd.Text = "Сбросить пароль";
-        _btnResetPwd.SetBounds(460, 350, 220, 36);
-        _btnResetPwd.Click += BtnResetPwd_Click;
-
-        _btnUnlock.Text = "Снять блокировку";
-        _btnUnlock.SetBounds(700, 350, 120, 36);
-        _btnUnlock.Click += BtnUnlock_Click;
-
-        Controls.AddRange(new Control[]
-        {
-            _dgv,
-            lblLogin, _tbLogin,
-            lblRole, _cbRole,
-            lblPwd, _tbNewPassword,
-            _btnAdd, _btnUpdate, _btnResetPwd, _btnUnlock
-        });
-
-        Shown += async (_, __) => await ReloadUsersAsync();
+        InitializeComponent();
+        cbRole.DataSource = new[] { "Администратор", "Пользователь" };
+        btnSave.Click += BtnSave_Click;
     }
 
-    private async Task ReloadUsersAsync()
-    {
-        var users = await _repo.GetAllAsync();
+    public string LoginValue => tbEditLogin.Text.Trim();
+    public string PasswordValue => tbEditPassword.Text;
+    public string RoleValue => cbRole.SelectedIndex == 0 ? "admin" : "user";
 
-        // Чтобы в таблице не показывать хэш как “важную инфу”, можно спрятать колонку
-        _dgv.DataSource = users.Select(u => new
-        {
-            u.Id,
-            u.Login,
-            u.Role,
-            u.FailedAttempts,
-            u.IsLocked
-        }).ToList();
+    public void Prepare(User? existing, bool firstAdmin = false)
+    {
+        _isNew = existing is null;
+        tbEditLogin.Text = existing?.Login ?? "";
+        lblEditPassword.Text = _isNew ? "Пароль" : "Новый пароль (если меняете)";
+        cbRole.SelectedIndex = firstAdmin || existing?.Role == "admin" ? 0 : 1;
+        cbRole.Enabled = !firstAdmin;
+        Text = firstAdmin ? "Полесье — первый администратор" : "Полесье — учётная запись";
     }
 
-    private void Dgv_CellClick(object? sender, DataGridViewCellEventArgs e)
+    private void BtnSave_Click(object? sender, EventArgs e)
     {
-        if (e.RowIndex < 0) return;
+        if (LoginValue.Length is < 1 or > 64 || _isNew && string.IsNullOrWhiteSpace(PasswordValue))
+        {
+            ShowWarning("Заполните логин и пароль для новой записи. Длина логина до 64 символов.");
+            return;
+        }
 
-        var row = _dgv.Rows[e.RowIndex];
-        _selectedUserId = Convert.ToInt64(row.Cells["Id"].Value);
+        if (!PasswordService.FitsBcrypt(PasswordValue) ||
+            PasswordValue.Length > 0 && string.IsNullOrWhiteSpace(PasswordValue))
+        {
+            ShowWarning("Введите пароль длиной до 72 байт без значения из одних пробелов.");
+            return;
+        }
 
-        _tbLogin.Text = Convert.ToString(row.Cells["Login"].Value) ?? "";
-        _cbRole.SelectedItem = Convert.ToString(row.Cells["Role"].Value) ?? "user";
-        _tbNewPassword.Text = "";
+        DialogResult = DialogResult.OK;
     }
 
-    private async void BtnAdd_Click(object? sender, EventArgs e)
-    {
-        var login = _tbLogin.Text.Trim();
-        var role = Convert.ToString(_cbRole.SelectedItem) ?? "user";
-
-        if (string.IsNullOrWhiteSpace(login))
-        {
-            MessageBox.Show("Укажите логин.", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-            return;
-        }
-
-        // Пароль обязателен при создании
-        if (string.IsNullOrWhiteSpace(_tbNewPassword.Text))
-        {
-            MessageBox.Show("Укажите пароль для нового пользователя.", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-            return;
-        }
-
-        if (await _repo.ExistsLoginAsync(login))
-        {
-            MessageBox.Show("Пользователь с таким логином уже существует.", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            return;
-        }
-
-        var hash = _pwd.HashPassword(_tbNewPassword.Text);
-        await _repo.AddUserAsync(login, hash, role);
-
-        MessageBox.Show("Пользователь добавлен.", "OK", MessageBoxButtons.OK, MessageBoxIcon.Information);
-        await ReloadUsersAsync();
-    }
-
-    private async void BtnUpdate_Click(object? sender, EventArgs e)
-    {
-        if (_selectedUserId is null)
-        {
-            MessageBox.Show("Выберите пользователя в таблице.", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-            return;
-        }
-
-        var login = _tbLogin.Text.Trim();
-        var role = Convert.ToString(_cbRole.SelectedItem) ?? "user";
-
-        if (string.IsNullOrWhiteSpace(login))
-        {
-            MessageBox.Show("Логин не может быть пустым.", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-            return;
-        }
-
-        await _repo.UpdateUserAsync(_selectedUserId.Value, login, role);
-        MessageBox.Show("Изменения сохранены.", "OK", MessageBoxButtons.OK, MessageBoxIcon.Information);
-        await ReloadUsersAsync();
-    }
-
-    private async void BtnResetPwd_Click(object? sender, EventArgs e)
-    {
-        if (_selectedUserId is null)
-        {
-            MessageBox.Show("Выберите пользователя в таблице.", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-            return;
-        }
-
-        if (string.IsNullOrWhiteSpace(_tbNewPassword.Text))
-        {
-            MessageBox.Show("Введите новый пароль.", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-            return;
-        }
-
-        var hash = _pwd.HashPassword(_tbNewPassword.Text);
-        await _repo.UpdatePasswordAsync(_selectedUserId.Value, hash);
-
-        MessageBox.Show("Пароль обновлён.", "OK", MessageBoxButtons.OK, MessageBoxIcon.Information);
-        _tbNewPassword.Text = "";
-    }
-
-    private async void BtnUnlock_Click(object? sender, EventArgs e)
-    {
-        if (_selectedUserId is null)
-        {
-            MessageBox.Show("Выберите пользователя в таблице.", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-            return;
-        }
-
-        await _repo.UnlockAsync(_selectedUserId.Value);
-        MessageBox.Show("Блокировка снята.", "OK", MessageBoxButtons.OK, MessageBoxIcon.Information);
-        await ReloadUsersAsync();
-    }
+    private void ShowWarning(string message) =>
+        MessageBox.Show(this, message, "Проверьте поля", MessageBoxButtons.OK, MessageBoxIcon.Warning);
 }
-
 ```
- 
-   ![Пример формы админ-панели](../assets/images/31.png)
 
-   /// caption
-   Рисунок 5 – Пример формы админ-панели
-   ///
- 
----
+## Добавьте логику панели администратора
 
-### 4.12. `Program.cs` (точка входа)
+Вставьте код в `Forms/AdminForm.cs`. В таблицу передаются логин, роль, число ошибок и блокировка. Добавление и редактирование используют один диалог. Повторяющийся логин отлавливается по коду `UniqueViolation` из PostgreSQL. После сохранения и разблокировки данные снова читаются из БД.
 
 ```csharp
-using DairyDemo.Auth.UI.Forms;
+using System.ComponentModel;
+using DairyDemo.Auth.Data;
+using DairyDemo.Auth.Services;
+using Npgsql;
+
+namespace DairyDemo.Auth.Forms;
+
+public partial class AdminForm : Form
+{
+    private readonly UserRepository _repository = new();
+    private bool _busy;
+
+    public AdminForm()
+    {
+        InitializeComponent();
+        Shown += AdminForm_Shown;
+        btnAdd.Click += BtnAdd_Click;
+        btnEdit.Click += BtnEdit_Click;
+        btnUnlock.Click += BtnUnlock_Click;
+        btnClose.Click += BtnClose_Click;
+    }
+
+    private async void AdminForm_Shown(object? sender, EventArgs e) => await RunAsync(RefreshUsersAsync);
+    private async void BtnAdd_Click(object? sender, EventArgs e) => await RunAsync(() => EditUserAsync(null));
+    private async void BtnEdit_Click(object? sender, EventArgs e) => await RunAsync(async () =>
+    {
+        if (SelectedUser() is { } user)
+            await EditUserAsync(user);
+    });
+
+    private async void BtnUnlock_Click(object? sender, EventArgs e) => await RunAsync(async () =>
+    {
+        if (SelectedUser() is not { } user)
+            return;
+
+        await _repository.UnlockAsync(user.Id);
+        await RefreshUsersAsync();
+    });
+
+    private void BtnClose_Click(object? sender, EventArgs e) => Close();
+
+    private async Task EditUserAsync(User? existing)
+    {
+        using var editor = new UserEditForm();
+        editor.Prepare(existing);
+        if (editor.ShowDialog(this) != DialogResult.OK)
+            return;
+
+        var hash = editor.PasswordValue.Length == 0 ? null : PasswordService.Hash(editor.PasswordValue);
+        await _repository.SaveAsync(existing?.Id, editor.LoginValue, editor.RoleValue, hash);
+        await RefreshUsersAsync();
+    }
+
+    private async Task RefreshUsersAsync() =>
+        gridUsers.DataSource = (await _repository.ListAsync()).Select(user => new UserRow(user)).ToList();
+
+    private User? SelectedUser()
+    {
+        if (gridUsers.CurrentRow?.DataBoundItem is UserRow row)
+            return row.Entry();
+
+        MessageBox.Show(this, "Выберите строку пользователя.", "Пользователи",
+            MessageBoxButtons.OK, MessageBoxIcon.Warning);
+        return null;
+    }
+
+    private async Task RunAsync(Func<Task> work)
+    {
+        if (_busy)
+            return;
+
+        _busy = true;
+        try
+        {
+            await work();
+        }
+        catch (PostgresException error) when (error.SqlState == PostgresErrorCodes.UniqueViolation)
+        {
+            MessageBox.Show(this, "Пользователь с таким логином уже существует.", "Пользователи",
+                MessageBoxButtons.OK, MessageBoxIcon.Warning);
+        }
+        catch (Exception error) when (error is NpgsqlException or IOException or InvalidOperationException or ArgumentException)
+        {
+            MessageBox.Show(this, "Не удалось обновить данные. Проверьте соединение с базой.",
+                "Пользователи", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private sealed class UserRow(User user)
+    {
+        [DisplayName("Логин")]
+        public string Login => user.Login;
+
+        [DisplayName("Роль")]
+        public string Role => user.Role == "admin" ? "Администратор" : "Пользователь";
+
+        [DisplayName("Ошибки подряд")]
+        public int FailedAttempts => user.FailedAttempts;
+
+        [DisplayName("Заблокирован")]
+        public bool IsLocked => user.IsLocked;
+
+        internal User Entry() => user;
+    }
+}
+```
+
+## Запустите свою форму входа
+
+В `Program.cs` укажите `LoginForm` как стартовую форму. После этого в **Обозревателе решений** удалите стандартную незаполненную `Form1.cs`, созданную шаблоном. Нажмите **Сохранить всё**, затем **Сборка → Собрать решение** и **F5**.
+
+```csharp
+using DairyDemo.Auth.Forms;
 
 namespace DairyDemo.Auth;
 
 internal static class Program
 {
     [STAThread]
-    static void Main()
+    private static void Main()
     {
         ApplicationConfiguration.Initialize();
         Application.Run(new LoginForm());
@@ -1509,19 +715,31 @@ internal static class Program
 }
 ```
 
----
+Если открывается диалог первого администратора, выберите локальные учебные логин и пароль. Запишите их для проверки. После сохранения войдите под этой записью и через **Добавить** создайте вторую с ролью «Пользователь».
 
-### 4.14. Важный момент по ТЗ: “3 попытки подряд”
+![Первый запуск с пустой таблицей users](../../assets/images/preparation/postgres-m4-first-admin.png)
 
-В текущем варианте попытки считаются, если:
+![Форма входа с собранным пазлом](../../assets/images/preparation/postgres-m4-login-runtime.png)
 
-* логин найден
-* и капча неверна **или** пароль неверен
+## Проверьте вход, блокировку и редактирование
 
-Это строго соответствует “блокируется учётная запись пользователя” (нельзя блокировать того, кого нет). Если нужно считать попытки даже для несуществующего логина — это уже другой механизм (например, отдельная таблица логов/IP), но в ТЗ обычно ожидают блокировку именно существующей учётки.
+1. Войдите под пользователем с правильно собранным пазлом. Проверьте название роли и кнопку «Выйти».
+2. Снова соберите пазл. Три раза подряд введите неверный пароль пользователя. Затем введите правильный пароль. Снова должно появиться сообщение о блокировке.
+3. Войдите под администратором. Найдите пользователя в таблице, нажмите **Снять блокировку**, убедитесь, что число ошибок равно 0. Выйдите и повторите успешный вход пользователя.
+4. Проверьте второй сценарий. Введите правильный пароль, оставьте пазл неверным и нажмите «Войти» трижды. Убедитесь, что блокировка сохранилась, и снова снимите её под администратором.
+5. Под администратором попробуйте добавить повторный логин пользователя. Программа должна показать предупреждение. Через **Изменить** задайте ему другой логин или пароль и проверьте вход с новыми данными.
+6. Измените размер окна администратора. Таблица должна расти вместе с окном. На форме входа проверьте **Tab** от логина к паролю и кнопке.
 
-## Скачать пример приложения
+После входа под обычным пользователем появится отдельное окно с логином и названием роли.
 
->Внимание! Не заработает без базы данных и установленного postgress.
+![Рабочее окно обычного пользователя](../../assets/images/preparation/postgres-m4-user-runtime.png)
 
-[Скачать готовый пример с исходниками и заполненной базой](../assets/files/main.zip)
+После входа под администратором появится таблица записей, а кнопки позволяют добавить запись, изменить её и снять блокировку.
+
+![Рабочая панель администратора с двумя проверочными записями](../../assets/images/preparation/postgres-m4-admin-runtime.png)
+
+![Диалог добавления обычного пользователя](../../assets/images/preparation/postgres-m4-user-edit-runtime.png)
+
+После третьей ошибочной попытки сообщение о блокировке появляется и при правильном пароле с собранным пазлом. В панели администратора у записи видны три ошибки и флажок блокировки.
+
+![Сообщение при блокировке](../../assets/images/preparation/postgres-m4-blocked.png)

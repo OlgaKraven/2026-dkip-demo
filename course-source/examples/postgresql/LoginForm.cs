@@ -125,35 +125,24 @@ namespace DairyDemo.Auth.UI.Forms
                 return;
             }
 
-            if (!_captcha.IsSolved)
-            {
-                _lblStatus.Text = "Соберите изображение для подтверждения.";
-                return;
-            }
-
-            var (ok, message, user) = await _auth.LoginAsync(
-                login,
-                password,
-                captchaOk: true
-            );
-
-            _lblStatus.Text = message;
-
-            if (!ok || user is null)
-                return;
-
-            // ---------- переход по роли ----------
-            Hide();
+            // Повторный щелчок во время запроса не должен добавлять ещё одну попытку.
+            _btnLogin.Enabled = false;
             try
             {
-                if (user.Role == "admin")
-                    new AdminForm(user).ShowDialog();
-                else
-                    new UserForm(user).ShowDialog();
+                var (ok, message, user) = await _auth.LoginAsync(login, password, _captcha.IsSolved);
+                _lblStatus.Text = message;
+                if (!ok || user is null)
+                    return;
+
+                using Form next = user.Role == "admin" ? new AdminForm(user) : new UserForm(user);
+                Hide();
+                next.ShowDialog();
+                Close();
             }
             finally
             {
-                Close();
+                if (!IsDisposed)
+                    _btnLogin.Enabled = true;
             }
         }
     }

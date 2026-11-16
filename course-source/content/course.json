@@ -4,8 +4,7 @@
     "level": "Базовый уровень",
     "duration": "2 часа 30 минут",
     "max_points": 50,
-    "source": "postgresql/assets/files/КОД 09.02.07-5-2026 Том 1.pdf",
-    "official_url": "https://bom.firpo.ru/Public/5510"
+    "source": "postgresql/assets/files/КОД 09.02.07-5-2026 Том 1.pdf"
   },
   "modules": [
     {
@@ -74,30 +73,14 @@
           "constructor": {
             "title": "Конструктор phpMyAdmin",
             "file": "example_solution_construct.md"
-          },
-          "sql": {
-            "title": "SQL",
-            "file": "example_solution.md"
           }
         },
         "4": {
           "desktop": {
             "title": "Конструктор форм",
             "file": "example_solution_designer.md"
-          },
-          "code": {
-            "title": "Решение в коде",
-            "file": "example_solution.md"
           }
         }
-      },
-      "alternatives": {
-        "2": [
-          "sql"
-        ],
-        "4": [
-          "code"
-        ]
       }
     },
     "postgresql": {
@@ -134,10 +117,6 @@
           "constructor": {
             "title": "Конструктор pgAdmin",
             "file": "example_solution_constuct.md"
-          },
-          "sql": {
-            "title": "SQL",
-            "file": "example_solution_sql.md"
           }
         },
         "4": {
@@ -150,11 +129,6 @@
             "file": "example_solution.md"
           }
         }
-      },
-      "alternatives": {
-        "2": [
-          "sql"
-        ]
       }
     }
   },

@@ -14,6 +14,8 @@ export const nugetPackages = {
   postgresql: [
     ['Npgsql', '10.0.1', '71be33f961fdab29d2ea7e08e371734a289f58bce01f6e8700ffc39d9bec8da9'],
     bcrypt,
+    ['Microsoft.Extensions.Logging.Abstractions', '9.0.0', '8814ecf6dc2359715e111b78084ae42087282595358eb775456088f15e63eca5'],
+    ['Microsoft.Extensions.DependencyInjection.Abstractions', '9.0.0', '0a7715c24299e42b081b63b4f8e33da97b985e1de9e941b2b9e4c748b0d52fe7'],
     ['Microsoft.Extensions.Logging.Abstractions', '10.0.0', '067860199734d47c134b1a206afabb51eab857b88c037c0f9db7d1c10e118469'],
     ['Microsoft.Extensions.DependencyInjection.Abstractions', '10.0.0', 'f62a1d5cfdfd62a831a269ce3cec5dfe6cdb1b425f3925f3168354de8993d8fb'],
   ],
@@ -41,7 +43,7 @@ export const offlineConfig = `<?xml version="1.0" encoding="utf-8"?>
 
 const sourceNotice = `# Пакеты NuGet
 
-Здесь хранятся оригинальные файлы .nupkg для .NET 10. Сведения об авторах и лицензиях доступны в пакетах и на страницах NuGet.
+Здесь хранятся оригинальные файлы .nupkg для .NET 10 и .NET 9. Сведения об авторах и лицензиях доступны в пакетах и на страницах NuGet.
 
 - [MySqlConnector](https://www.nuget.org/packages/MySqlConnector/2.6.1) · [MIT](https://github.com/mysql-net/MySqlConnector/blob/2.6.1/LICENSE)
 - [Npgsql](https://www.nuget.org/packages/Npgsql/10.0.1) · [PostgreSQL License](https://github.com/npgsql/npgsql/blob/v10.0.1/LICENSE)

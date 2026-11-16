@@ -207,38 +207,36 @@ function lessonActions(actions, withEr) {
     ? `<li><span class="er-lesson-action-number" aria-hidden="true">${index+1}</span><span>${E(action)}</span></li>`
     : `<li>${E(action)}</li>`).join('')}</ol>`;
 }
-function dbTableDetails(table, creating) {
+function dbTableDetails(table) {
  const mysql=stack==='mysql';
  const links=ER_GUIDE.stacks[stack].links.filter(link=>link.from===table.id);
  const primary=table.fields.filter(field=>field.pk).map(field=>field.id);
  const checks=table.checks;
  return `<h4><code>${E(table.id)}</code> · ${E(table.title)}</h4>
   <p>${E(table.why)}</p>
-  ${creating?'<p>'+E(mysql
-    ? 'Откройте «Структура» базы → «Создать таблицу». Введите '+table.id+' и число столбцов '+table.fields.length+'. Нажмите «Создать», заполните поля по таблице ниже и сохраните.'
-    : 'В своей схеме нажмите правой кнопкой по Tables → Create → Table. В General задайте имя '+table.id+'. В Columns добавьте '+table.fields.length+' полей по таблице ниже и нажмите Save.')+'</p>':''}
   <table class="lesson-db-fields" aria-label="${E(table.id)} · Поля">
    <thead><tr><th scope="col">Поле</th><th scope="col">Тип</th><th scope="col">Ограничения</th></tr></thead>
    <tbody>${table.fields.map(field=>{
-    const type=field.type==='IDENTITY'?(mysql?'INT · A_I':'integer · Identity (By default)'):
+    const type=!mysql&&field.autoIncrement?'bigserial':
       field.type.replace(/\s+(?:UNIQUE|REF)\b.*$/,'');
-    const flags=[field.pk?'PK':'',field.unique?'UNIQUE':'',field.nullable?'NULL':'NOT NULL'].filter(Boolean).join(' · ');
+    const flags=[field.pk?'PK':'',field.unique?'UNIQUE':'',field.nullable?'NULL':'NOT NULL',
+      mysql&&field.autoIncrement?'A_I':''].filter(Boolean).join(' · ');
     return `<tr><th scope="row"><code>${E(field.id)}</code><small>${E(field.title)}</small></th><td>${E(type)}</td><td>${E(flags)}</td></tr>`;
    }).join('')}</tbody>
   </table>
-  ${creating&&!mysql&&table.fields.some(field=>field.type==='IDENTITY')?'<p>Для поля Identity откройте его свойства в Columns. На вкладке Constraints выберите Type → IDENTITY и Identity → BY DEFAULT.</p>':''}
   <p><strong>Первичный ключ</strong> · <code>${E(primary.join(', '))}</code>
     ${primary.length>1?' · добавьте оба поля в один ключ.':''}</p>
   ${links.length?`<h4>Внешние ключи</h4><ul class="lesson-db-links">${links.map(link=>`<li>
    <code>${E(link.field)} → ${E(link.to)}.${E(link.target)}</code><p>${E(link.explanation)}</p>
   </li>`).join('')}</ul>`:'<p>У этой таблицы нет исходящих внешних ключей.</p>'}
-  ${checks.length?`<div class="lesson-code-block">
-   <div class="lesson-code-toolbar"><span>Проверки значений (CHECK)</span>${btn('Копировать SQL','type="button" data-copy-lesson-code')}</div>
-   <pre class="lesson-code" tabindex="0">${E(checks.map(check=>'ALTER TABLE '+(mysql?'':'app.')+table.id+' ADD CHECK ('+check+');').join('\n'))}</pre>
-  </div>
-  <p>${mysql?'Если редактор не предлагает форму CHECK, выполните эти готовые команды во вкладке SQL после создания таблицы.':'Откройте Constraints → Check → «+». В Definition перенесите условие из круглых скобок после CHECK. Для каждого условия создайте отдельную проверку.'}</p>`:''}`;
+  ${checks.length?`<h4>Проверки значений (CHECK)</h4>
+  <p>Эти условия блокируют значения, которые нарушают правила таблицы. ${mysql?'Сверьте условия в свойствах таблицы.':'В Properties → Constraints → Check нажмите «+». Создайте отдельную проверку для каждого выражения и вставьте его в Definition.'}</p>
+  ${checks.map(check=>`<div class="lesson-code-block">
+   <div class="lesson-code-toolbar"><span>Условие</span>${btn('Копировать код','type="button" data-copy-lesson-code')}</div>
+   <pre class="lesson-code" tabindex="0">${E(check)}</pre>
+  </div>`).join('')}`:''}`;
 }
-function dbTableGuide(creating) {
+function dbTableGuide() {
  const tables=ER_GUIDE.stacks[stack].tables;
  return `<section class="lesson-db-structure" aria-labelledby="db-table-guide-title">
    <h3 id="db-table-guide-title">Таблицы в порядке создания</h3>
@@ -247,9 +245,9 @@ function dbTableGuide(creating) {
       NOT NULL запрещает отсутствующее значение.
       ${stack==='mysql'?'Для поля с UNIQUE выберите индекс UNIQUE.':'Для поля с UNIQUE откройте Constraints → Unique и добавьте это поле.'}</p>
    <label for="db-table-example">Выберите таблицу</label>
-   <select id="db-table-example" aria-controls="db-table-details"${creating?' data-create-tables':''}>${tables.map((table,index)=>
+   <select id="db-table-example" aria-controls="db-table-details">${tables.map((table,index)=>
      `<option value="${E(table.id)}">${index+1}. ${E(table.title)} · ${E(table.id)}</option>`).join('')}</select>
-   <div id="db-table-details">${dbTableDetails(tables[0],creating)}</div>
+   <div id="db-table-details">${dbTableDetails(tables[0])}</div>
   </section>`;
 }
 function explain(step, withEr) {
@@ -272,7 +270,7 @@ function explain(step, withEr) {
       <div class="lesson-code-toolbar"><span>${E(block.label||'Код')}</span>${btn('Копировать код','type="button" data-copy-lesson-code')}</div>
       <pre class="lesson-code" tabindex="0">${E(block.code)}</pre>
     </div>`).join('')}
-    ${step.tableGuide?dbTableGuide(step.tableGuide==='create'):''}
+    ${step.tableGuide?dbTableGuide():''}
     ${step.referenceFile?`<p>${btn(E(step.referenceLabel||'Открыть пример SQL'),`type="button" data-code="${E(step.referenceFile)}" aria-haspopup="dialog"`)}</p>`:''}
     ${withEr&&!step.preparation
       ? (step.showExampleShot&&screenshot ? btn('Открыть снимок примера',`data-image="${E(screenshot.file)}" aria-haspopup="dialog"`) : '')
@@ -769,8 +767,17 @@ function criteria() {
     <p>${link('Полные формулировки в КОД · стр. 12','materials/kim-2026.pdf#page=12')}</p>
   </section>`;
 }
-function deckPath(){return location.pathname.includes('/_mock-preview/')?'../deck.html?preview=1':'deck.html';}
-function teacher(){return `<section class="training-page">${header('Преподавателю','Разбор официального образца ДЭ 2026 для занятия.')}<article class="route-panel"><h2>Презентация по демоэкзамену</h2><p>Пошаговый разбор пяти заданий на Windows Forms и MySQL / MariaDB.</p><p>Перед показом впишите ФИО, должность и кафедру. В презентации доступны окно аудитории и печать.</p><div class="button-row">${btn('Данные преподавателя','id="teacher-settings"')}${btn('Открыть презентацию','id="deck-open"',true)}<a class="btn" href="deck.html?print=1&amp;auto=1" target="_blank" rel="noopener">Сохранить PDF</a></div></article></section>`;}
+function deckPath(deckStack, print=false){
+  const preview=location.pathname.includes('/_mock-preview/');
+  const params=new URLSearchParams({stack:deckStack});
+  if(preview)params.set('preview','1');
+  if(print){params.set('print','1');params.set('auto','1');}
+  return (preview?'../':'')+'deck.html?'+params;
+}
+function teacher(){
+  const presentations=Object.entries(D.stackNames).map(([key,name])=>`<h3>${E(name)}</h3><div class="button-row"><a class="btn" ${key==='mysql'?'id="deck-open"':''} href="${E(deckPath(key))}">Открыть презентацию</a><a class="btn" href="${E(deckPath(key,true))}" target="_blank" rel="noopener">Сохранить PDF</a></div>`).join('');
+  return `<section class="training-page">${header('Преподавателю','Разбор официального образца ДЭ 2026 для занятия.')}<article class="route-panel"><h2>Презентации по демоэкзамену</h2><p>Перед показом впишите ФИО, должность и кафедру. В презентациях доступны окно аудитории и печать.</p>${btn('Данные преподавателя','id="teacher-settings"')}${presentations}</article></section>`;
+}
 function modal(title){const d=document.createElement('dialog');d.className='course-dialog';d.setAttribute('aria-label',title);d.innerHTML=`<header class="modal-head"><h2>${E(title)}</h2>${btn('Закрыть','data-close')}</header><div class="modal-body"></div>`;document.body.append(d);d.querySelector('[data-close]').onclick=()=>d.close();d.addEventListener('close',()=>d.remove());d.showModal();return d;}
 function openExampleInstructions() {
   const guide = D.exampleLaunch[selectedExampleStack()];
@@ -975,7 +982,7 @@ function tour(){
   step('mock','Выполните задания и проверьте себя','Выберите задание в списке. Откройте его файлы под условием и отметьте выполненные пункты самопроверки.','.stage-nav [data-task]'),
   step('examples','Примеры · выберите стек и скачайте проект','Выберите MySQL / MariaDB или PostgreSQL. Архив, инструкция по запуску и исходники откроются для выбранного стека.','.example-stacks'),
   step('examples','Посмотрите исходный код','Выберите файл по пути и нажмите «Открыть файл». В окне можно прочитать и скопировать весь код. Сохраняйте исходные имена и пути файлов.','#example-file'),
-  step('teacher','Преподавателю · подготовьте занятие','Заполните данные преподавателя и откройте пошаговый разбор пяти заданий на Windows Forms и MySQL / MariaDB.','#deck-open')
+  step('teacher','Преподавателю · подготовьте занятие','Заполните данные преподавателя и выберите презентацию для вашей СУБД.','#deck-open')
  ];
  let i=0;
  const d=modal('Тур по сайту');
@@ -1043,7 +1050,6 @@ function tour(){
 }
 
 function teacherSettings(){const d=modal('Настройка перед занятием');d.querySelector('.modal-body').innerHTML=`<div class="settings-form">${[['teacher-name','ФИО преподавателя'],['teacher-position','Должность'],['teacher-department','Кафедра или лаборатория']].map(([id,t])=>`<label>${t}<input id="${id}" value="${E(get(id,''))}"></label>`).join('')}<p class="small">Сохраняется в этом браузере и отображается на вводном слайде.</p></div>`;d.querySelectorAll('input').forEach(e=>e.oninput=()=>set(e.id,e.value));}
-function deck(){location.assign(deckPath());}
 function bindImages(host){
   host.querySelectorAll('[data-image]').forEach(control=>{
     control.onclick=()=>{
@@ -1116,9 +1122,9 @@ root.querySelectorAll('[data-copy-lesson-code]').forEach(button=>{
 on('db-table-example',event=>{
  const table=ER_GUIDE.stacks[stack].tables.find(item=>item.id===event.target.value);
  const details=document.getElementById('db-table-details');
- details.innerHTML=dbTableDetails(table,event.target.hasAttribute('data-create-tables'));
- const copy=details.querySelector('[data-copy-lesson-code]');
- if(copy)bindCodeCopy(copy,details.querySelector('pre'));
+ details.innerHTML=dbTableDetails(table);
+ details.querySelectorAll('[data-copy-lesson-code]').forEach(button=>
+  bindCodeCopy(button,button.closest('.lesson-code-block').querySelector('pre')));
 },'onchange');
 root.querySelectorAll('[data-example-stack]').forEach(button=>button.onclick=()=>{
  const nextStack = button.dataset.exampleStack;
@@ -1145,7 +1151,7 @@ on('mock-brief',()=>{
  document.getElementById('mock-brief')?.focus({preventScroll:true});
 });
 on('site-tour',tour);
-on('theme',()=>{dark=!dark;set('dark',dark);render();document.getElementById('theme')?.focus({preventScroll:true});});on('materials-open',()=>materials());on('lesson-steps',showLessonSteps);on('start-lesson',()=>openLessonView('steps'));root.querySelectorAll('[data-lesson-tab]').forEach(button=>button.onclick=()=>openLessonView(button.dataset.lessonTab));on('done',e=>{set('done:'+stack+':'+stage,e.target.checked);render();document.getElementById('done')?.focus({preventScroll:true});},'onchange');on('teacher-settings',teacherSettings);on('deck-open',deck);bindImages(root);
+on('theme',()=>{dark=!dark;set('dark',dark);render();document.getElementById('theme')?.focus({preventScroll:true});});on('materials-open',()=>materials());on('lesson-steps',showLessonSteps);on('start-lesson',()=>openLessonView('steps'));root.querySelectorAll('[data-lesson-tab]').forEach(button=>button.onclick=()=>openLessonView(button.dataset.lessonTab));on('done',e=>{set('done:'+stack+':'+stage,e.target.checked);render();document.getElementById('done')?.focus({preventScroll:true});},'onchange');on('teacher-settings',teacherSettings);bindImages(root);
  root.querySelectorAll('.imported-lesson .copy-code').forEach(button=>bindCodeCopy(button,button.parentElement.querySelector('pre code')));
  const diagrams=root.querySelectorAll('.imported-lesson .mermaid');
  if(diagrams.length&&globalThis.mermaid){
